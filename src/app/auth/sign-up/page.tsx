@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requestMagicLink, signInWithGoogle } from "@/server/actions";
+import { requestMagicLink } from "@/server/actions";
 import { SiteHeader } from "@/components/site-header";
 
 export const metadata = { title: "Create account" };
@@ -36,12 +36,6 @@ export default async function SignUpPage({
           </label>
           <button className="btn-primary" type="submit">
             Email me a magic link
-          </button>
-        </form>
-        <form action={signInWithGoogle} style={{ marginTop: 12 }}>
-          <input type="hidden" name="next" value="/auth/complete" />
-          <button className="btn-ghost" type="submit">
-            Continue with Google
           </button>
         </form>
         <p>

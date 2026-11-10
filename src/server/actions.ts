@@ -58,24 +58,6 @@ export async function requestMagicLink(formData: FormData) {
   redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }
 
-export async function signInWithGoogle(formData: FormData) {
-  if (!supabaseConfigured()) {
-    redirect(`/auth/sign-in?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
-  }
-  const next = safeReturnPath(String(formData.get("next") ?? "/auth/complete"));
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
-    },
-  });
-  if (error || !data.url) {
-    redirect(`/auth/sign-in?error=${encodeURIComponent(error?.message || "Google sign-in is not enabled yet.")}`);
-  }
-  redirect(data.url);
-}
-
 export async function confirmAdult(formData: FormData) {
   if (!supabaseConfigured()) redirect("/auth/sign-in");
   if (formData.get("adult") !== "yes") {
