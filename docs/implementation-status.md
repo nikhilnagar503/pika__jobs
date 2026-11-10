@@ -13,8 +13,9 @@ Checked against the 2 November 2026 blueprint. This is a working local applicati
 
 ## Not done until the owner supplies accounts
 
-- Supabase Auth is not connected. Local sign-in is a development identity and is labeled as such.
-- The running app still uses the file store. The SQL migration is the production schema and has not been executed against a hosted database in this session.
+- Supabase project `pikajobs` (`rwjmkuzthumntgqoaywd`, Mumbai) exists under org Pikajobs. Schema migrations `0001` and `0002` are applied.
+- Supabase Auth clients and the auth callback are wired. Local email sign-in still works as a development identity until Auth providers are enabled in the dashboard.
+- The running app still uses the file store for jobs and money. Set `PIKAJOBS_DATA_MODE=supabase` only after the Postgres adapter is finished and `DATABASE_URL` / service role are set.
 - No live Razorpay order has been created. No payout has been sent.
 - No employer source has been fetched. `PIKAJOBS_SOURCE_FETCH` stays false. There is no LinkedIn collector.
 - Legal pages are drafts. Do not collect money until they are replaced with approved business details.

@@ -7,17 +7,28 @@ import type { MemoryStore } from "@/server/repositories/memory";
 
 const COOKIE = "pikajobs_session";
 const WEEK = 60 * 60 * 24 * 14;
+let memorySecret: string | null = null;
+
+function dataDir(): string {
+  return process.env.VERCEL ? path.join("/tmp", "pikajobs-data") : path.join(process.cwd(), ".data");
+}
 
 function sessionSecret(): string {
   if (process.env.PIKAJOBS_SESSION_SECRET && process.env.PIKAJOBS_SESSION_SECRET.length >= 16) {
     return process.env.PIKAJOBS_SESSION_SECRET;
   }
-  const file = path.join(process.cwd(), ".data", "session.secret");
-  if (existsSync(file)) return readFileSync(file, "utf8").trim();
-  const created = randomBytes(32).toString("hex");
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, created, { mode: 0o600 });
-  return created;
+  const file = path.join(dataDir(), "session.secret");
+  try {
+    if (existsSync(file)) return readFileSync(file, "utf8").trim();
+    const created = randomBytes(32).toString("hex");
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, created, { mode: 0o600 });
+    return created;
+  } catch {
+    // Vercel/serverless filesystems can be read-only. Prefer setting PIKAJOBS_SESSION_SECRET.
+    memorySecret ??= randomBytes(32).toString("hex");
+    return memorySecret;
+  }
 }
 
 function sign(payload: string): string {
