@@ -17,9 +17,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body>
         <a className="skip" href="#main">Skip to content</a>
-        <div className="banner">
-          Accounts use Supabase Auth. Job data still uses the local file store until the Postgres adapter is switched on. Payments stay closed until Razorpay and the business details are ready.
-        </div>
         {children}
       </body>
     </html>

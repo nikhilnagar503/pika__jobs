@@ -49,7 +49,11 @@ export async function requestMagicLink(formData: FormData) {
     },
   });
   if (error) {
-    redirect(`${errorPath}?error=${encodeURIComponent(error.message)}`);
+    const rateLimited = /only request this after|rate limit|security purposes/i.test(error.message);
+    const message = rateLimited
+      ? "Please wait about a minute before requesting another magic link. Supabase limits how often emails can be sent."
+      : error.message;
+    redirect(`${errorPath}?error=${encodeURIComponent(message)}`);
   }
   redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }

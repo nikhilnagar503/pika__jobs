@@ -37,13 +37,32 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .skip:focus { top: 12px; }
 
 .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
-.topbar, .footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.topbar, .footer { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .topbar { min-height: 72px; }
-.wordmark { font-weight: 700; letter-spacing: -0.04em; text-decoration: none; font-size: 20px; }
+.wordmark { font-weight: 700; letter-spacing: -0.04em; text-decoration: none; font-size: 20px; flex-shrink: 0; }
 .nav-links, .footer-links, .cluster, .chips { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.nav-links {
+  margin-left: auto;
+  flex-wrap: nowrap;
+  gap: 0 28px;
+  align-items: center;
+}
 .nav-links a, .footer-links a { color: var(--muted); text-decoration: none; }
+.nav-links a:not(.btn-primary) {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 10px 0;
+  white-space: nowrap;
+}
 .nav-links a:hover, .footer-links a:hover { color: var(--text); }
-.nav-links a.btn-primary, .nav-links a.btn-primary:hover { color: #fff; }
+.nav-links a.btn-primary {
+  margin-left: 4px;
+  min-height: 40px;
+  padding: 0 18px;
+  color: #fff;
+}
+.nav-links a.btn-primary:hover { color: #fff; }
 
 .btn, .btn-primary, .btn-ghost {
   display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
@@ -127,9 +146,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
     display: grid; grid-template-columns: repeat(4, 1fr); position: sticky; bottom: 0;
     background: var(--surface); border-top: 1px solid var(--border); padding: 4px;
   }
-  .topbar, .footer { flex-wrap: wrap; align-items: flex-start; }
+  .topbar, .footer { flex-wrap: wrap; align-items: center; }
   .topbar { min-height: 64px; padding: 12px 0; }
-  .nav-links { width: 100%; }
+  .nav-links {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    justify-content: flex-start;
+  }
+  .nav-links a.btn-primary { margin-left: 0; }
   .hero { padding-top: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
