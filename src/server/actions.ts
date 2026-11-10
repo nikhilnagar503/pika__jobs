@@ -1,52 +1,107 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { clearSession, readActor, referralCookie, writeSession } from "@/server/auth/session";
+import { readActor, signOutSupabase } from "@/server/auth/session";
 import { AppError } from "@/server/http";
 import { safeReturnPath } from "@/server/http";
 import { withStore } from "@/server/repositories/file-store";
 import type { JobInput } from "@/server/repositories/memory";
+import { supabaseConfigured } from "@/server/supabase/env";
+import { createSupabaseServerClient } from "@/server/supabase/server";
 
 function fail(error: unknown): never {
   const message = error instanceof AppError ? error.message : "That action could not be completed.";
   redirect(`/account?error=${encodeURIComponent(message)}`);
 }
 
-export async function signUp(formData: FormData) {
-  const email = String(formData.get("email") ?? "");
-  const displayName = String(formData.get("displayName") ?? "");
-  const adult = formData.get("adult") === "yes";
-  const next = safeReturnPath(String(formData.get("next") ?? "/onboarding"));
-  try {
-    const code = await referralCookie();
-    const user = await withStore((store) =>
-      store.createUser({ email, displayName, adultConfirmed: adult, referralCode: code }),
-    );
-    await writeSession(user.userId);
-  } catch (error) {
-    redirect(`/auth/sign-up?error=${encodeURIComponent(error instanceof AppError ? error.message : "Could not create the account.")}`);
-  }
-  redirect(next);
+function appUrl(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
-export async function signIn(formData: FormData) {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const next = safeReturnPath(String(formData.get("next") ?? "/feed"));
-  try {
-    const userId = await withStore((store) => {
-      const user = store.db.users.find((item) => item.email === email && !item.deletedAt);
-      if (!user) throw new AppError(404, "not_found", "No local account uses that email yet.");
-      return user.userId;
-    });
-    await writeSession(userId);
-  } catch (error) {
-    redirect(`/auth/sign-in?error=${encodeURIComponent(error instanceof AppError ? error.message : "Could not sign in.")}`);
+export async function requestMagicLink(formData: FormData) {
+  if (!supabaseConfigured()) {
+    redirect(`/auth/sign-in?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
   }
-  redirect(next);
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  const adult = formData.get("adult") === "yes";
+  const mode = String(formData.get("mode") ?? "sign-in");
+  const next = safeReturnPath(String(formData.get("next") ?? (mode === "sign-up" ? "/onboarding" : "/feed")));
+  const errorPath = mode === "sign-up" ? "/auth/sign-up" : "/auth/sign-in";
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    redirect(`${errorPath}?error=${encodeURIComponent("Enter a valid email.")}`);
+  }
+  if (mode === "sign-up" && !adult) {
+    redirect(`${errorPath}?error=${encodeURIComponent("Pikajobs is for adults aged 18 and over.")}`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+      data: {
+        display_name: displayName || email.split("@")[0],
+        adult_confirmed: mode === "sign-up" ? adult : undefined,
+      },
+    },
+  });
+  if (error) {
+    redirect(`${errorPath}?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
+}
+
+export async function signInWithGoogle(formData: FormData) {
+  if (!supabaseConfigured()) {
+    redirect(`/auth/sign-in?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
+  }
+  const next = safeReturnPath(String(formData.get("next") ?? "/auth/complete"));
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+  if (error || !data.url) {
+    redirect(`/auth/sign-in?error=${encodeURIComponent(error?.message || "Google sign-in is not enabled yet.")}`);
+  }
+  redirect(data.url);
+}
+
+export async function confirmAdult(formData: FormData) {
+  if (!supabaseConfigured()) redirect("/auth/sign-in");
+  if (formData.get("adult") !== "yes") {
+    redirect(`/auth/confirm-age?error=${encodeURIComponent("Pikajobs is for adults aged 18 and over.")}`);
+  }
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/sign-in");
+  const { error } = await supabase.from("profiles").upsert(
+    {
+      user_id: user.id,
+      adult_confirmed: true,
+      display_name:
+        (typeof user.user_metadata?.display_name === "string" && user.user_metadata.display_name) ||
+        user.email?.split("@")[0] ||
+        "Member",
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) redirect(`/auth/confirm-age?error=${encodeURIComponent(error.message)}`);
+  await withStore(async (store) => {
+    await readActor(store);
+  });
+  redirect("/onboarding");
 }
 
 export async function signOut() {
-  await clearSession();
+  await signOutSupabase();
   redirect("/");
 }
 

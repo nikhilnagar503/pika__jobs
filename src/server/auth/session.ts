@@ -1,83 +1,81 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import { cookies } from "next/headers";
 import type { Actor } from "@/server/domain/types";
 import type { MemoryStore } from "@/server/repositories/memory";
-
-const COOKIE = "pikajobs_session";
-const WEEK = 60 * 60 * 24 * 14;
-let memorySecret: string | null = null;
-
-function dataDir(): string {
-  return process.env.VERCEL ? path.join("/tmp", "pikajobs-data") : path.join(process.cwd(), ".data");
-}
-
-function sessionSecret(): string {
-  if (process.env.PIKAJOBS_SESSION_SECRET && process.env.PIKAJOBS_SESSION_SECRET.length >= 16) {
-    return process.env.PIKAJOBS_SESSION_SECRET;
-  }
-  const file = path.join(dataDir(), "session.secret");
-  try {
-    if (existsSync(file)) return readFileSync(file, "utf8").trim();
-    const created = randomBytes(32).toString("hex");
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, created, { mode: 0o600 });
-    return created;
-  } catch {
-    // Vercel/serverless filesystems can be read-only. Prefer setting PIKAJOBS_SESSION_SECRET.
-    memorySecret ??= randomBytes(32).toString("hex");
-    return memorySecret;
-  }
-}
-
-function sign(payload: string): string {
-  return createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
-}
-
-export function sealSession(userId: string): string {
-  const payload = Buffer.from(JSON.stringify({ userId, exp: Date.now() + WEEK * 1000 })).toString("base64url");
-  return `${payload}.${sign(payload)}`;
-}
-
-export function openSession(token: string | undefined): string | null {
-  if (!token) return null;
-  const [payload, signature] = token.split(".");
-  if (!payload || !signature) return null;
-  const expected = sign(payload);
-  const left = Buffer.from(signature);
-  const right = Buffer.from(expected);
-  if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { userId?: string; exp?: number };
-    if (!parsed.userId || !parsed.exp || parsed.exp < Date.now()) return null;
-    return parsed.userId;
-  } catch {
-    return null;
-  }
-}
+import { supabaseConfigured } from "@/server/supabase/env";
+import { createSupabaseServerClient } from "@/server/supabase/server";
 
 export async function readActor(store: MemoryStore): Promise<Actor> {
-  const jar = await cookies();
-  const userId = openSession(jar.get(COOKIE)?.value);
-  if (!userId) return { kind: "anonymous" };
-  return store.actorFor(userId);
-}
+  if (!supabaseConfigured()) return { kind: "anonymous" };
 
-export async function writeSession(userId: string) {
-  const jar = await cookies();
-  jar.set(COOKIE, sealSession(userId), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: WEEK,
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.id || !user.email) return { kind: "anonymous" };
+
+  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, adult_confirmed, country_code, current_stage, onboarding_step, onboarding_completed")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+
+  if (!profile) {
+    const displayName =
+      (typeof user.user_metadata?.display_name === "string" && user.user_metadata.display_name) ||
+      user.email.split("@")[0];
+    const adultConfirmed = user.user_metadata?.adult_confirmed === true;
+    await supabase.from("profiles").upsert(
+      {
+        user_id: user.id,
+        display_name: displayName,
+        adult_confirmed: adultConfirmed,
+      },
+      { onConflict: "user_id" },
+    );
+    await supabase.from("user_preferences").upsert({ user_id: user.id }, { onConflict: "user_id" });
+  }
+
+  await supabase.rpc("bootstrap_admin");
+
+  const { data: rolesAfterBootstrap } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+  const roles = (rolesAfterBootstrap ?? roleRows ?? []).map((row) => row.role);
+
+  const adultConfirmed = Boolean(profile?.adult_confirmed ?? user.user_metadata?.adult_confirmed === true);
+  const displayName =
+    profile?.display_name ||
+    (typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name : "") ||
+    user.email.split("@")[0];
+
+  const referral = await referralCookie();
+  store.ensureAuthUser({
+    userId: user.id,
+    email: user.email,
+    displayName,
+    adultConfirmed,
+    roles,
+    referralCode: referral,
   });
+
+  if (profile) {
+    const local = store.db.users.find((item) => item.userId === user.id);
+    if (local) {
+      local.countryCode = profile.country_code || local.countryCode;
+      local.currentStage = profile.current_stage || local.currentStage;
+      local.onboardingStep = profile.onboarding_step ?? local.onboardingStep;
+      local.onboardingCompleted = profile.onboarding_completed ?? local.onboardingCompleted;
+    }
+  }
+
+  return store.actorFor(user.id);
 }
 
-export async function clearSession() {
-  const jar = await cookies();
-  jar.delete(COOKIE);
+export async function signOutSupabase() {
+  if (!supabaseConfigured()) return;
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signOut();
 }
 
 export async function referralCookie(): Promise<string | null> {
@@ -85,5 +83,3 @@ export async function referralCookie(): Promise<string | null> {
   const value = jar.get("pikajobs_ref")?.value ?? null;
   return value && /^[A-Z2-9]{10}$/.test(value) ? value : null;
 }
-
-export { COOKIE };

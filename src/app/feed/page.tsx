@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MemberShell } from "@/components/member-shell";
 import { FeedClient } from "@/features/jobs/feed-client";
-import { readActor } from "@/server/auth/session";
+import { requireMember } from "@/server/auth/gates";
 import { type FeedFilters } from "@/server/domain/jobs/feed";
 import { withStore } from "@/server/repositories/file-store";
 
@@ -21,12 +21,12 @@ export default async function FeedPage({ searchParams }: { searchParams: Promise
   };
   if (query.unknown === "0" || query.unknown === "1") filters.includeUnknownPay = query.unknown === "1";
   const data = await withStore(async (store) => {
-    const actor = await readActor(store);
-    if (actor.kind !== "user") return null;
-    const page = store.listFeed(actor, { filters, sort, preview: actor.roles.includes("admin") ? preview : null });
-    return { page, admin: actor.roles.includes("admin") };
+    const gate = await requireMember(store, "/feed");
+    if ("redirectTo" in gate) return gate;
+    const page = store.listFeed(gate.actor, { filters, sort, preview: gate.actor.roles.includes("admin") ? preview : null });
+    return { page, admin: gate.actor.roles.includes("admin") };
   });
-  if (!data) redirect("/auth/sign-in?next=/feed");
+  if ("redirectTo" in data) redirect(data.redirectTo);
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
     if (typeof value === "string" && key !== "cursor") search.set(key, value);

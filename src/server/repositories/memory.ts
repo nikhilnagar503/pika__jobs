@@ -166,6 +166,57 @@ export class MemoryStore {
     return user;
   }
 
+  /** Sync a Supabase Auth user into the local domain store (same UUID). */
+  ensureAuthUser(input: {
+    userId: string;
+    email: string;
+    displayName: string;
+    adultConfirmed: boolean;
+    roles: string[];
+    referralCode?: string | null;
+    now?: Date;
+  }): UserAccount {
+    const now = input.now ?? new Date();
+    const email = input.email.trim().toLowerCase();
+    let user = this.db.users.find((item) => item.userId === input.userId && !item.deletedAt);
+    if (!user) {
+      const byEmail = this.db.users.find((item) => item.email === email && !item.deletedAt);
+      if (byEmail) {
+        const oldId = byEmail.userId;
+        byEmail.userId = input.userId;
+        for (const prefs of this.db.preferences) {
+          if (prefs.userId === oldId) prefs.userId = input.userId;
+        }
+        user = byEmail;
+      } else {
+        user = {
+          userId: input.userId,
+          email,
+          displayName: input.displayName.trim().slice(0, 80) || email.split("@")[0],
+          countryCode: "IN",
+          currentStage: "",
+          onboardingStep: 0,
+          onboardingCompleted: false,
+          adultConfirmed: input.adultConfirmed,
+          roles: [...input.roles],
+          suspended: false,
+          createdAt: now.toISOString(),
+          deletedAt: null,
+          referralCode: null,
+          referralTermsAcceptedAt: null,
+        };
+        this.db.users.push(user);
+        this.db.preferences.push(emptyPreferences(user.userId, now.toISOString()));
+        this.attributeNewUser(user, input.referralCode, null, now);
+      }
+    }
+    user.email = email;
+    user.displayName = input.displayName.trim().slice(0, 80) || user.displayName;
+    user.adultConfirmed = input.adultConfirmed;
+    user.roles = [...input.roles];
+    return user;
+  }
+
   actorFor(userId: string, now = new Date()): Actor {
     const user = this.db.users.find((item) => item.userId === userId && !item.deletedAt);
     if (!user) return { kind: "anonymous" };
