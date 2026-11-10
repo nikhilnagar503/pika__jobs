@@ -18,6 +18,24 @@ function appUrl(): string {
   return (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
+export async function signInWithPassword(formData: FormData) {
+  if (!supabaseConfigured()) {
+    redirect(`/auth/sign-in?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
+  }
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const next = safeReturnPath(String(formData.get("next") ?? "/auth/complete"));
+  if (!email || !password) {
+    redirect(`/auth/sign-in?error=${encodeURIComponent("Enter your email and password.")}`);
+  }
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    redirect(`/auth/sign-in?error=${encodeURIComponent(error.message)}`);
+  }
+  redirect(next);
+}
+
 export async function requestMagicLink(formData: FormData) {
   if (!supabaseConfigured()) {
     redirect(`/auth/sign-in?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
