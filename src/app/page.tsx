@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { SampleCards } from "@/components/sample-cards";
 import { SiteFooter, SiteHeader } from "@/components/site-header";
-import { readActor } from "@/server/auth/session";
+import { isSignedIn } from "@/server/auth/session";
 import { formatInr, product } from "@/shared/product";
-import { withStore } from "@/server/repositories/file-store";
 
 export default async function HomePage() {
-  const signedIn = await withStore(async (store) => (await readActor(store)).kind === "user");
+  const signedIn = await isSignedIn();
   return (
     <>
       <SiteHeader signedIn={signedIn} />

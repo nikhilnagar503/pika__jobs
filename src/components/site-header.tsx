@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { readActor } from "@/server/auth/session";
-import { withStore } from "@/server/repositories/file-store";
+import { isSignedIn } from "@/server/auth/session";
 
 export async function SiteHeader({ signedIn }: { signedIn?: boolean }) {
-  const authed = signedIn ?? await withStore(async (store) => (await readActor(store)).kind === "user");
+  const authed = signedIn ?? (await isSignedIn());
   return (
     <header className="wrap topbar">
       <Link className="wordmark" href="/">Pikajobs</Link>

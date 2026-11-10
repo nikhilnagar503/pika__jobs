@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createDatabase, type Database } from "@/server/repositories/db";
+import { seedDemoListings } from "@/server/repositories/demo-seed";
 import { MemoryStore } from "@/server/repositories/memory";
 
 function dataDir(): string {
@@ -80,6 +81,7 @@ export function paymentsEnabled(): boolean {
 export async function withStore<T>(fn: (store: MemoryStore) => Promise<T> | T): Promise<T> {
   const run = queue.then(async () => {
     const store = new MemoryStore(readDatabase(), { paymentsEnabled: paymentsEnabled() });
+    seedDemoListings(store);
     const result = await fn(store);
     writeDatabase(store.db);
     return result;

@@ -16,50 +16,121 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     return store.getPreferences(actor);
   });
   if (!prefs) redirect("/auth/sign-in?next=/onboarding");
+
   return (
     <MemberShell current="/onboarding">
-      <h1>Improve your feed</h1>
-      <p className="muted">Step {step} of 3. You can skip every question.</p>
-      <form action={saveOnboarding}>
+      <p className="eyebrow">Step {step} of 3</p>
+      <h1>{step === 1 ? "What are you looking for?" : step === 2 ? "How do you want to work?" : "Fine-tune your feed"}</h1>
+      <p className="muted">Tap the cards that fit. You can skip anything.</p>
+      <form action={saveOnboarding} className="onboard">
         <input type="hidden" name="step" value={step} />
         <input type="hidden" name="complete" value={step === 3 ? "yes" : "no"} />
+
         {step === 1 && (
           <>
-            <fieldset className="checks"><legend>What are you looking for?</legend>
-              {opportunityKinds.map((item) => <label key={item.slug}><input type="checkbox" name="kinds" value={item.slug} defaultChecked={prefs.opportunityKinds.includes(item.slug)} />{item.label}</label>)}
-            </fieldset>
-            <fieldset className="checks"><legend>Sector</legend>
-              <label><input type="checkbox" name="sectors" value="private" />Private</label>
-              <label><input type="checkbox" name="sectors" value="government" />Government or public sector</label>
-            </fieldset>
-            <fieldset className="checks"><legend>Role families</legend>
-              {roleFamilies.slice(0, 8).map((item) => <label key={item.slug}><input type="checkbox" name="roles" value={item.slug} defaultChecked={prefs.roleFamilySlugs.includes(item.slug)} />{item.label}</label>)}
-            </fieldset>
-            <label className="field">Other, saved as a suggestion<textarea name="other" maxLength={80} defaultValue={prefs.otherRoleNote} /></label>
+            <section className="onboard-block">
+              <h2>Opportunity type</h2>
+              <div className="choice-grid">
+                {opportunityKinds.map((item) => (
+                  <label key={item.slug} className="choice-card">
+                    <input type="checkbox" name="kinds" value={item.slug} defaultChecked={prefs.opportunityKinds.includes(item.slug)} />
+                    <span className="choice-title">{item.label}</span>
+                    <span className="choice-copy">Include these in ranking suggestions.</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+            <section className="onboard-block">
+              <h2>Sector</h2>
+              <div className="choice-grid two">
+                <label className="choice-card">
+                  <input type="checkbox" name="sectors" value="private" defaultChecked={prefs.sectors.includes("private")} />
+                  <span className="choice-title">Private</span>
+                  <span className="choice-copy">Companies and startups.</span>
+                </label>
+                <label className="choice-card">
+                  <input type="checkbox" name="sectors" value="government" defaultChecked={prefs.sectors.includes("government")} />
+                  <span className="choice-title">Government</span>
+                  <span className="choice-copy">Public sector and related openings.</span>
+                </label>
+              </div>
+            </section>
+            <section className="onboard-block">
+              <h2>Role families</h2>
+              <div className="choice-grid">
+                {roleFamilies.slice(0, 8).map((item) => (
+                  <label key={item.slug} className="choice-card">
+                    <input type="checkbox" name="roles" value={item.slug} defaultChecked={prefs.roleFamilySlugs.includes(item.slug)} />
+                    <span className="choice-title">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+              <label className="field" style={{ marginTop: 16 }}>
+                Other, saved as a suggestion
+                <textarea name="other" maxLength={80} defaultValue={prefs.otherRoleNote} />
+              </label>
+            </section>
           </>
         )}
+
         {step === 2 && (
           <>
-            <label className="field">Current stage
-              <select name="stage" defaultValue={prefs.stage}><option value="">Skip</option>{stages.map((item) => <option key={item}>{item}</option>)}</select>
-            </label>
-            <label className="field">Experience
-              <select name="experience" defaultValue={prefs.experienceBand}><option value="">Skip</option>{experienceBands.map((item) => <option key={item.slug} value={item.slug}>{item.label}</option>)}</select>
-            </label>
-            <fieldset className="checks"><legend>Work preference</legend>
-              {workModes.filter((item) => item.slug !== "not_stated").map((item) => <label key={item.slug}><input type="checkbox" name="modes" value={item.slug} defaultChecked={prefs.workModes.includes(item.slug)} />{item.label}</label>)}
-            </fieldset>
-            <label className="field">Location<input name="location" defaultValue={prefs.locationLabel} /></label>
-            <label className="field">Country<input name="country" defaultValue={prefs.countryCode || "IN"} /></label>
+            <section className="onboard-block">
+              <h2>Your stage</h2>
+              <div className="choice-grid two">
+                {stages.map((item) => (
+                  <label key={item} className="choice-card">
+                    <input type="radio" name="stage" value={item} defaultChecked={prefs.stage === item} />
+                    <span className="choice-title">{item}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+            <section className="onboard-block">
+              <h2>Experience</h2>
+              <div className="choice-grid two">
+                {experienceBands.map((item) => (
+                  <label key={item.slug} className="choice-card">
+                    <input type="radio" name="experience" value={item.slug} defaultChecked={prefs.experienceBand === item.slug} />
+                    <span className="choice-title">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+            <section className="onboard-block">
+              <h2>Work mode</h2>
+              <div className="choice-grid two">
+                {workModes.filter((item) => item.slug !== "not_stated").map((item) => (
+                  <label key={item.slug} className="choice-card">
+                    <input type="checkbox" name="modes" value={item.slug} defaultChecked={prefs.workModes.includes(item.slug)} />
+                    <span className="choice-title">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+            <div className="grid-2" style={{ marginTop: 8 }}>
+              <label className="field">Location<input name="location" defaultValue={prefs.locationLabel} placeholder="City or region" /></label>
+              <label className="field">Country<input name="country" defaultValue={prefs.countryCode || "IN"} /></label>
+            </div>
           </>
         )}
+
         {step === 3 && (
-          <>
-            <label className="field">Skills, comma separated, up to 10<input name="skills" defaultValue={prefs.skillSlugs.join(", ")} /></label>
-            <label className="checks"><input type="checkbox" name="unknownPay" value="yes" defaultChecked={prefs.showUnknownPay} /> Show opportunities without disclosed pay</label>
-          </>
+          <section className="onboard-block">
+            <h2>Skills and pay visibility</h2>
+            <label className="field">
+              Skills, comma separated, up to 10
+              <input name="skills" defaultValue={prefs.skillSlugs.join(", ")} placeholder="React, SQL, Figma" />
+            </label>
+            <label className="choice-card" style={{ display: "grid" }}>
+              <input type="checkbox" name="unknownPay" value="yes" defaultChecked={prefs.showUnknownPay} />
+              <span className="choice-title">Show opportunities without disclosed pay</span>
+              <span className="choice-copy">Unknown pay stays unknown. Unpaid roles stay labeled unpaid.</span>
+            </label>
+          </section>
         )}
-        <div className="cluster">
+
+        <div className="cluster onboard-actions">
           {step > 1 && <a className="btn-ghost" href={`/onboarding?step=${step - 1}`}>Back</a>}
           <button className="btn-ghost" type="submit" formNoValidate>Skip</button>
           <button className="btn-primary" type="submit">{step === 3 ? "Open feed" : "Continue"}</button>

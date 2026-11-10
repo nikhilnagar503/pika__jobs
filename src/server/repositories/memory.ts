@@ -585,7 +585,7 @@ export class MemoryStore {
   }
 
   publishJob(actor: Actor, jobId: string, now = new Date()): JobRecord {
-    this.requireRole(actor, ["admin", "reviewer"]);
+    if (actor.kind !== "system") this.requireRole(actor, ["admin", "reviewer"]);
     if (this.db.flags.publication_paused) throw new AppError(409, "publication_paused", "Publication is paused.");
     const job = this.findAny(jobId);
     if (!job) throw new AppError(404, "not_available", "This listing is not available.");

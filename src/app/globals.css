@@ -135,6 +135,50 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .error { padding: 12px 16px; border-radius: 12px; background: #fef2f2; color: #991b1b; }
 .skeleton { height: 140px; border-radius: 12px; background: linear-gradient(90deg, #e2e8f0, #f8fafc, #e2e8f0); background-size: 200% 100%; }
 
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.onboard { display: grid; gap: 28px; margin-top: 8px; }
+.onboard-block h2 { margin: 0 0 12px; font-size: 18px; letter-spacing: -0.02em; }
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+.choice-grid.two { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.choice-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-height: 96px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.choice-card:hover { border-color: #c7d2fe; }
+.choice-card:has(input:checked) {
+  border-color: var(--primary);
+  background: #eef2ff;
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.choice-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.choice-title { font-weight: 650; letter-spacing: -0.02em; }
+.choice-copy { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.onboard-actions { position: sticky; bottom: 12px; padding-top: 8px; }
+
 @media (max-width: 1024px) {
   .app { grid-template-columns: var(--nav) minmax(0, 1fr); }
   .rail { display: none; }

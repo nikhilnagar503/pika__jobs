@@ -18,6 +18,47 @@ function appUrl(): string {
   return (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
+export async function signUpWithPassword(formData: FormData) {
+  if (!supabaseConfigured()) {
+    redirect(`/auth/sign-up?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
+  }
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  const adult = formData.get("adult") === "yes";
+  const next = safeReturnPath(String(formData.get("next") ?? "/onboarding"));
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    redirect(`/auth/sign-up?error=${encodeURIComponent("Enter a valid email.")}`);
+  }
+  if (!adult) {
+    redirect(`/auth/sign-up?error=${encodeURIComponent("Pikajobs is for adults aged 18 and over.")}`);
+  }
+  if (password.length < 8) {
+    redirect(`/auth/sign-up?error=${encodeURIComponent("Use a password with at least 8 characters.")}`);
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${appUrl()}/auth/callback?next=${encodeURIComponent(next)}`,
+      data: {
+        display_name: displayName || email.split("@")[0],
+        adult_confirmed: true,
+      },
+    },
+  });
+  if (error) {
+    redirect(`/auth/sign-up?error=${encodeURIComponent(error.message)}`);
+  }
+  if (data.session) {
+    redirect(next);
+  }
+  redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
+}
+
 export async function signInWithPassword(formData: FormData) {
   if (!supabaseConfigured()) {
     redirect(`/auth/sign-in?error=${encodeURIComponent("Supabase Auth is not configured.")}`);
