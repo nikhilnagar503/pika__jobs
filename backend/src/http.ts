@@ -32,7 +32,9 @@ export function errorJson(error: unknown, requestId: string): { status: number; 
     JSON.stringify({
       request_id: requestId,
       code: "internal_error",
-      message: error instanceof Error ? error.name : "unknown",
+      name: error instanceof Error ? error.name : "unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.split("\n").slice(0, 6) : undefined,
     }),
   );
   return {
