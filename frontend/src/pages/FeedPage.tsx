@@ -3,6 +3,8 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { JobCard, type JobCardData } from "@/components/JobCard";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { getCached, setCached } from "@/lib/feed-cache";
+import { restoreScroll, saveScroll } from "@/lib/scroll";
 
 type FeedItem = { type: "job"; job: JobCardData } | { type: "sponsored" };
 
@@ -12,15 +14,30 @@ type FeedPageData = {
   total: number;
 };
 
+type FeedCacheData = {
+  items: FeedItem[];
+  nextCursor: string | null;
+};
+
+function cacheKey(q: string) {
+  return `member-feed:${q}`;
+}
+
 export function FeedPage() {
   const { user, ready } = useAuth();
   const [params, setParams] = useSearchParams();
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const q = params.get("q") || "";
+  const initial = getCached<FeedCacheData>(cacheKey(q));
+  const [items, setItems] = useState<FeedItem[]>(initial?.items ?? []);
+  const [nextCursor, setNextCursor] = useState<string | null>(initial?.nextCursor ?? null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(!initial);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const persist = useCallback((nextItems: FeedItem[], cursor: string | null) => {
+    setCached(cacheKey(q), { items: nextItems, nextCursor: cursor });
+  }, [q]);
 
   const loadPage = useCallback(async (cursor: string | null, replace: boolean) => {
     const query = new URLSearchParams();
@@ -28,12 +45,31 @@ export function FeedPage() {
     if (q) query.set("q", q);
     if (cursor) query.set("cursor", cursor);
     const body = await api<FeedPageData>(`/api/v1/jobs?${query}`);
-    setItems((current) => (replace ? body.items : [...current, ...body.items]));
+    setItems((current) => {
+      const next = replace ? body.items : [...current, ...body.items];
+      persist(next, body.nextCursor);
+      return next;
+    });
     setNextCursor(body.nextCursor);
-  }, [q]);
+    return body;
+  }, [persist, q]);
 
   useEffect(() => {
     if (!user) return;
+    const cached = getCached<FeedCacheData>(cacheKey(q));
+    if (cached) {
+      setItems(cached.items);
+      setNextCursor(cached.nextCursor);
+      setLoading(false);
+      setRefreshing(true);
+      loadPage(null, true)
+        .catch(() => {
+          // keep cached data if refresh fails
+        })
+        .finally(() => setRefreshing(false));
+      return;
+    }
+
     setLoading(true);
     setError("");
     setItems([]);
@@ -42,6 +78,14 @@ export function FeedPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load feed."))
       .finally(() => setLoading(false));
   }, [user, q, loadPage]);
+
+  useEffect(() => {
+    if (loading) return;
+    restoreScroll("feed");
+    const onScroll = () => saveScroll("feed");
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [loading, items.length]);
 
   async function loadMore() {
     if (!nextCursor || loadingMore) return;
@@ -75,7 +119,7 @@ export function FeedPage() {
       <div className="feed-toolbar">
         <div className="feed-title-row">
           <h1>Feed</h1>
-          <p className="feed-sort">Newest first</p>
+          <p className="feed-sort">{refreshing ? "Updating…" : "Newest first"}</p>
         </div>
         <form className="feed-search" onSubmit={onSearch}>
           <input

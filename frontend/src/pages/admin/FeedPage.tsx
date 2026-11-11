@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { JobCard, type JobCardData } from "@/components/JobCard";
 import { api } from "@/lib/api";
+import { getCached, invalidateCached, setCached } from "@/lib/feed-cache";
+import { restoreScroll, saveScroll } from "@/lib/scroll";
 
 type AdminJobRecord = {
   jobId: string;
@@ -27,6 +29,8 @@ type AdminJobRecord = {
   sourcePublishedAt: string | null;
   lifecycle: string;
 };
+
+const ADMIN_FEED_KEY = "admin-feed";
 
 function toCard(job: AdminJobRecord): JobCardData {
   return {
@@ -56,30 +60,49 @@ function toCard(job: AdminJobRecord): JobCardData {
   };
 }
 
+function sortCards(cards: JobCardData[]) {
+  return [...cards].sort((a, b) => {
+    const aTime = new Date(a.publishedAt || a.firstSeenAt || a.effectiveJobAt || 0).getTime();
+    const bTime = new Date(b.publishedAt || b.firstSeenAt || b.effectiveJobAt || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
 export function AdminFeedPage() {
-  const [items, setItems] = useState<JobCardData[]>([]);
+  const initial = getCached<JobCardData[]>(ADMIN_FEED_KEY);
+  const [items, setItems] = useState<JobCardData[]>(initial ?? []);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initial);
+  const [refreshing, setRefreshing] = useState(false);
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    setLoading(true);
+    const cached = getCached<JobCardData[]>(ADMIN_FEED_KEY);
+    if (cached) {
+      setItems(cached);
+      setLoading(false);
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     Promise.all([
       api<{ items: AdminJobRecord[] }>("/api/v1/admin/jobs"),
       api<{ items: AdminJobRecord[] }>("/api/v1/admin/jobs?scope=review"),
     ])
       .then(([current, drafts]) => {
-        const cards = [...current.items, ...drafts.items]
-          .map(toCard)
-          .sort((a, b) => {
-            const aTime = new Date(a.publishedAt || a.firstSeenAt || a.effectiveJobAt || 0).getTime();
-            const bTime = new Date(b.publishedAt || b.firstSeenAt || b.effectiveJobAt || 0).getTime();
-            return bTime - aTime;
-          });
+        const cards = sortCards([...current.items, ...drafts.items].map(toCard));
         setItems(cards);
+        setCached(ADMIN_FEED_KEY, cards);
+        setError("");
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin feed."))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (!cached) setError(err instanceof Error ? err.message : "Could not load admin feed.");
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   }, []);
 
   const filtered = useMemo(() => {
@@ -93,10 +116,27 @@ export function AdminFeedPage() {
     );
   }, [items, q]);
 
+  useEffect(() => {
+    if (loading) return;
+    restoreScroll("admin-feed");
+    const onScroll = () => saveScroll("admin-feed");
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [loading, filtered.length]);
+
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     setQ(String(data.get("q") || ""));
+  }
+
+  function onDeleted(jobId: string) {
+    setItems((current) => {
+      const next = current.filter((item) => item.id !== jobId);
+      setCached(ADMIN_FEED_KEY, next);
+      return next;
+    });
+    invalidateCached("member-feed:");
   }
 
   return (
@@ -104,7 +144,10 @@ export function AdminFeedPage() {
       <header className="admin-header">
         <div>
           <h1>Admin feed</h1>
-          <p className="muted">Same card view as the member feed, with Edit and Delete.</p>
+          <p className="muted">
+            Same card view as the member feed, with Edit and Delete.
+            {refreshing ? " Updating…" : ""}
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link className="btn-ghost" to="/admin/jobs">Manage list</Link>
@@ -130,7 +173,7 @@ export function AdminFeedPage() {
             key={job.id}
             job={job}
             mode="admin"
-            onDeleted={(jobId) => setItems((current) => current.filter((item) => item.id !== jobId))}
+            onDeleted={onDeleted}
           />
         ))}
         {!loading && filtered.length === 0 && (

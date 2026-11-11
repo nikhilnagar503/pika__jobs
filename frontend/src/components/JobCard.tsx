@@ -78,7 +78,17 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
           {job.accessTier === "pro" && <span className="flag">Pro</span>}
           {mode === "admin" ? (
             <>
-              <Link className="btn-ghost save-btn" to={`/admin/jobs/${job.id}/edit`}>
+              <Link
+                className="btn-ghost save-btn"
+                to={`/admin/jobs/${job.id}/edit`}
+                onClick={() => {
+                  try {
+                    sessionStorage.setItem("pikajobs:scroll:admin-feed", String(window.scrollY));
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
                 Edit
               </Link>
               {confirmDelete ? (
@@ -106,12 +116,7 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
       <div className="alert-body">
         <p><strong>Company:</strong> {job.companyName}</p>
         <p>
-          <strong>Role:</strong>{" "}
-          {mode === "admin" ? (
-            <span className="alert-role">{job.title}</span>
-          ) : (
-            <Link className="alert-role" to={`/jobs/${job.id}`}>{job.title}</Link>
-          )}
+          <strong>Role:</strong> <span className="alert-role">{job.title}</span>
         </p>
         {job.batchLabel && <p><strong>Batch:</strong> {job.batchLabel}</p>}
         <p><strong>{payKey}:</strong> {job.payLabel}</p>
@@ -140,14 +145,29 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
             {job.applicationUrl && (
               <p>
                 <strong>Apply Link -</strong>{" "}
-                <a className="alert-link" href={job.applicationUrl} target="_blank" rel="noreferrer">{job.applicationUrl}</a>
+                <a
+                  className="alert-link"
+                  href={job.applicationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onMouseDown={() => {
+                    try {
+                      sessionStorage.setItem("pikajobs:scroll:feed", String(window.scrollY));
+                      sessionStorage.setItem("pikajobs:scroll:admin-feed", String(window.scrollY));
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  {job.applicationUrl}
+                </a>
               </p>
             )}
             {mailto && job.hrEmail && (
               <>
                 <p>
                   <strong>Apply -</strong>{" "}
-                  <a className="alert-link" href={mailto}>{job.hrEmail}</a>
+                  <a className="alert-link" href={mailto} target="_blank" rel="noopener noreferrer">{job.hrEmail}</a>
                 </p>
                 {job.emailSubject && <p><strong>Subject:</strong> {job.emailSubject}</p>}
               </>
