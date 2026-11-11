@@ -210,7 +210,7 @@ describe("pay, filters, and ranking", () => {
       pages += 1;
     } while (cursor);
     expect(seen.size).toBe(10000);
-    expect(pages).toBe(500);
+    expect(pages).toBe(200);
   }, 30_000);
 });
 
