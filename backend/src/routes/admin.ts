@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { JobInput } from "@/repositories/memory";
+import { fingerprint } from "@/domain/money";
 import { AppError } from "@/http";
 import { asyncHandler, requireAdmin } from "@/middleware/store";
 import { parseJobImportJson } from "@/shared/job-json-import";
@@ -50,14 +51,39 @@ adminRouter.post(
     requireAdmin(req);
     try {
       const parsed = parseJobImportJson(req.body?.payload ?? req.body);
+      const seen = new Set<string>();
+      const drafts = [];
+      const skipped = [...parsed.skipped];
+
+      for (const draft of parsed.drafts) {
+        const key = fingerprint([draft.companyName, draft.title]);
+        if (seen.has(key)) {
+          skipped.push({
+            key: draft.importKey,
+            reason: `Duplicate in file: ${draft.companyName} · ${draft.title}`,
+          });
+          continue;
+        }
+        const existing = req.store.findLiveCompanyTitleDuplicate(draft.companyName, draft.title);
+        if (existing) {
+          skipped.push({
+            key: draft.importKey,
+            reason: `Already live: ${existing.companyName} · ${existing.title}`,
+          });
+          continue;
+        }
+        seen.add(key);
+        drafts.push(draft);
+      }
+
       res.json({
         format: parsed.format,
         category: parsed.category,
         generatedDate: parsed.generatedDate,
-        draftCount: parsed.drafts.length,
-        skippedCount: parsed.skipped.length,
-        drafts: parsed.drafts,
-        skipped: parsed.skipped,
+        draftCount: drafts.length,
+        skippedCount: skipped.length,
+        drafts,
+        skipped,
       });
     } catch (error) {
       throw new AppError(
@@ -113,23 +139,46 @@ adminRouter.post(
     const source = req.store.ensureManualListingSource(actor);
     const created: Array<{ importKey: string; jobId: string; lifecycle: string }> = [];
     const failed: Array<{ importKey: string; message: string }> = [];
+    const skipped = [...meta.skipped];
+    const seen = new Set<string>();
 
     for (const draft of drafts) {
       const importKey = typeof draft.importKey === "string" ? draft.importKey : crypto.randomUUID();
+      const companyName = typeof draft.companyName === "string" ? draft.companyName : "";
+      const title = typeof draft.title === "string" ? draft.title : "";
+      const key = fingerprint([companyName, title]);
+
+      if (!companyName || !title) {
+        skipped.push({ key: importKey, reason: "Missing company or title." });
+        continue;
+      }
+      if (seen.has(key)) {
+        skipped.push({ key: importKey, reason: `Duplicate in batch: ${companyName} · ${title}` });
+        continue;
+      }
+      const existing = req.store.findLiveCompanyTitleDuplicate(companyName, title);
+      if (existing) {
+        skipped.push({ key: importKey, reason: `Already live: ${existing.companyName} · ${existing.title}` });
+        continue;
+      }
+
       try {
         const { importKey: _key, skipped: _skipped, skipReason: _reason, ...input } = draft;
         const saved = req.store.saveJob(actor, { ...input, sourceId: source.id } as JobInput);
         const published = publish ? req.store.publishJob(actor, saved.jobId) : saved;
+        seen.add(key);
         created.push({
           importKey,
           jobId: published.jobId,
           lifecycle: published.lifecycle,
         });
       } catch (error) {
-        failed.push({
-          importKey,
-          message: error instanceof Error ? error.message : "Import failed.",
-        });
+        const message = error instanceof Error ? error.message : "Import failed.";
+        if (error instanceof AppError && error.code === "duplicate_listing") {
+          skipped.push({ key: importKey, reason: message });
+        } else {
+          failed.push({ importKey, message });
+        }
       }
     }
 
@@ -139,10 +188,10 @@ adminRouter.post(
       generatedDate: meta.generatedDate,
       publish,
       createdCount: created.length,
-      skippedCount: meta.skipped.length,
+      skippedCount: skipped.length,
       failedCount: failed.length,
       created,
-      skipped: meta.skipped,
+      skipped,
       failed,
     });
   }),

@@ -145,7 +145,7 @@ export function AdminImportJobsPage() {
         </label>
       </section>
 
-      {preview && drafts.length > 0 && (
+      {preview && (
         <section className="admin-panel" style={{ marginTop: 24 }}>
           <div className="admin-header" style={{ marginBottom: 12 }}>
             <div>
@@ -154,102 +154,120 @@ export function AdminImportJobsPage() {
                 Format: {preview.format}
                 {preview.category ? ` · ${preview.category}` : ""}
                 {preview.generatedDate ? ` · ${preview.generatedDate}` : ""}
-                {preview.skippedCount ? ` · ${preview.skippedCount} rows not mapped` : ""}
+                {preview.skippedCount ? ` · ${preview.skippedCount} skipped (duplicates or incomplete)` : ""}
               </p>
+              <p className="muted">Same company + title cannot appear twice in the live 14-day feed.</p>
             </div>
-            <button className="btn-primary" type="button" onClick={confirmImport} disabled={loading}>
+            <button className="btn-primary" type="button" onClick={confirmImport} disabled={loading || drafts.length === 0}>
               {loading ? "Posting…" : `Post ${drafts.length} jobs`}
             </button>
           </div>
 
-          <div className="import-preview-list">
-            {drafts.map((draft, index) => (
-              <article key={draft.importKey} className="import-preview-card">
-                <div className="import-preview-top">
-                  <span className="meta">{draft.opportunityKind}</span>
-                  <button className="btn-ghost" type="button" onClick={() => removeDraft(index)}>
-                    Remove
-                  </button>
-                </div>
-                <label className="field">
-                  Role
-                  <input
-                    value={draft.title}
-                    onChange={(e) => updateDraft(index, { title: e.target.value })}
-                  />
-                </label>
-                <label className="field">
-                  Company
-                  <input
-                    value={draft.companyName}
-                    onChange={(e) => updateDraft(index, { companyName: e.target.value })}
-                  />
-                </label>
-                <div className="import-preview-grid">
-                  <label className="field">
-                    Type
-                    <select
-                      value={draft.opportunityKind}
-                      onChange={(e) => updateDraft(index, { opportunityKind: e.target.value })}
-                    >
-                      <option value="job">Job</option>
-                      <option value="internship">Internship</option>
-                      <option value="apprenticeship">Apprenticeship</option>
-                      <option value="freelance">Freelance</option>
-                      <option value="fellowship">Fellowship</option>
-                    </select>
-                  </label>
-                  <label className="field">
-                    Pay / stipend
-                    <input
-                      value={draft.payDisplayLabel ?? ""}
-                      onChange={(e) => updateDraft(index, { payDisplayLabel: e.target.value || null })}
-                    />
-                  </label>
-                  <label className="field">
-                    Location
-                    <input
-                      value={draft.locationLabel}
-                      onChange={(e) => updateDraft(index, { locationLabel: e.target.value })}
-                    />
-                  </label>
-                  <label className="field">
-                    Batch
-                    <input
-                      value={draft.batchLabel ?? ""}
-                      onChange={(e) => updateDraft(index, { batchLabel: e.target.value || null })}
-                    />
-                  </label>
-                </div>
-                <label className="field">
-                  Apply URL
-                  <input
-                    value={draft.applicationUrl ?? ""}
-                    onChange={(e) => updateDraft(index, { applicationUrl: e.target.value || null })}
-                  />
-                </label>
-                <label className="field">
-                  HR email
-                  <input
-                    value={draft.hrEmail ?? ""}
-                    onChange={(e) => updateDraft(index, { hrEmail: e.target.value || null })}
-                  />
-                </label>
-                <label className="field">
-                  Summary
-                  <textarea
-                    rows={2}
-                    value={draft.summary}
-                    onChange={(e) => updateDraft(index, { summary: e.target.value })}
-                  />
-                </label>
-              </article>
-            ))}
-          </div>
+          {drafts.length > 0 && (
+            <>
+              <div className="import-preview-list">
+                {drafts.map((draft, index) => (
+                  <article key={draft.importKey} className="import-preview-card">
+                    <div className="import-preview-top">
+                      <span className="meta">{draft.opportunityKind}</span>
+                      <button className="btn-ghost" type="button" onClick={() => removeDraft(index)}>
+                        Remove
+                      </button>
+                    </div>
+                    <label className="field">
+                      Role
+                      <input
+                        value={draft.title}
+                        onChange={(e) => updateDraft(index, { title: e.target.value })}
+                      />
+                    </label>
+                    <label className="field">
+                      Company
+                      <input
+                        value={draft.companyName}
+                        onChange={(e) => updateDraft(index, { companyName: e.target.value })}
+                      />
+                    </label>
+                    <div className="import-preview-grid">
+                      <label className="field">
+                        Type
+                        <select
+                          value={draft.opportunityKind}
+                          onChange={(e) => updateDraft(index, { opportunityKind: e.target.value })}
+                        >
+                          <option value="job">Job</option>
+                          <option value="internship">Internship</option>
+                          <option value="apprenticeship">Apprenticeship</option>
+                          <option value="freelance">Freelance</option>
+                          <option value="fellowship">Fellowship</option>
+                        </select>
+                      </label>
+                      <label className="field">
+                        Pay / stipend
+                        <input
+                          value={draft.payDisplayLabel ?? ""}
+                          onChange={(e) => updateDraft(index, { payDisplayLabel: e.target.value || null })}
+                        />
+                      </label>
+                      <label className="field">
+                        Location
+                        <input
+                          value={draft.locationLabel}
+                          onChange={(e) => updateDraft(index, { locationLabel: e.target.value })}
+                        />
+                      </label>
+                      <label className="field">
+                        Batch
+                        <input
+                          value={draft.batchLabel ?? ""}
+                          onChange={(e) => updateDraft(index, { batchLabel: e.target.value || null })}
+                        />
+                      </label>
+                    </div>
+                    <label className="field">
+                      Apply URL
+                      <input
+                        value={draft.applicationUrl ?? ""}
+                        onChange={(e) => updateDraft(index, { applicationUrl: e.target.value || null })}
+                      />
+                    </label>
+                    <label className="field">
+                      HR email
+                      <input
+                        value={draft.hrEmail ?? ""}
+                        onChange={(e) => updateDraft(index, { hrEmail: e.target.value || null })}
+                      />
+                    </label>
+                    <label className="field">
+                      Summary
+                      <textarea
+                        rows={2}
+                        value={draft.summary}
+                        onChange={(e) => updateDraft(index, { summary: e.target.value })}
+                      />
+                    </label>
+                  </article>
+                ))}
+              </div>
 
-          <button className="btn-primary" type="button" onClick={confirmImport} disabled={loading} style={{ marginTop: 16 }}>
-            {loading ? "Posting…" : `Post ${drafts.length} jobs`}
-          </button>
+              <button className="btn-primary" type="button" onClick={confirmImport} disabled={loading} style={{ marginTop: 16 }}>
+                {loading ? "Posting…" : `Post ${drafts.length} jobs`}
+              </button>
+            </>
+          )}
+
+          {preview.skipped.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <h3>Skipped</h3>
+              <ul>
+                {preview.skipped.slice(0, 30).map((item) => (
+                  <li key={`${item.key}-${item.reason}`}>
+                    {item.key}: {item.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 

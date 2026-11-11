@@ -557,6 +557,14 @@ export class MemoryStore {
     if (existing && input.expectedVersion != null && existing.version !== input.expectedVersion) {
       throw new AppError(409, "version_conflict", "This listing was updated. Reload it and try again.");
     }
+    const duplicate = this.findLiveCompanyTitleDuplicate(input.companyName, input.title, existing?.jobId);
+    if (duplicate) {
+      throw new AppError(
+        409,
+        "duplicate_listing",
+        `A live listing already exists for ${duplicate.companyName} · ${duplicate.title}.`,
+      );
+    }
     const firstSeen = existing?.firstSeenAt ?? now.toISOString();
     const resolved = resolveEffectiveJobAt({
       sourcePublishedAt: input.sourcePublishedAt ? new Date(input.sourcePublishedAt) : null,
@@ -666,6 +674,14 @@ export class MemoryStore {
     }
     const block = publicationBlockReason(new Date(job.effectiveJobAt), new Date(job.visibleUntil), now);
     if (block) throw new AppError(422, "not_publishable", block);
+    const titleDuplicate = this.findLiveCompanyTitleDuplicate(job.companyName, job.title, job.jobId);
+    if (titleDuplicate) {
+      throw new AppError(
+        409,
+        "duplicate_listing",
+        `A live listing already exists for ${titleDuplicate.companyName} · ${titleDuplicate.title}.`,
+      );
+    }
     const duplicate = this.crossSourceDuplicate(job);
     if (duplicate) throw new AppError(409, "needs_review", "A similar listing from another source needs review before publication.");
     job.lifecycle = "published";
@@ -1348,6 +1364,20 @@ export class MemoryStore {
     }
     const normalized = sourceUrl.trim().replace(/\/$/, "").toLowerCase();
     return jobs.find((job) => job.sourceId === sourceId && job.sourceUrl.trim().replace(/\/$/, "").toLowerCase() === normalized);
+  }
+
+  findLiveCompanyTitleDuplicate(companyName: string, title: string, excludeJobId?: string): JobRecord | null {
+    const key = fingerprint([companyName, title]);
+    const live = [...this.db.jobsCurrent, ...this.db.drafts];
+    return (
+      live.find(
+        (item) =>
+          item.jobId !== excludeJobId &&
+          item.lifecycle !== "archived" &&
+          item.lifecycle !== "removed" &&
+          fingerprint([item.companyName, item.title]) === key,
+      ) ?? null
+    );
   }
 
   private crossSourceDuplicate(job: JobRecord): boolean {
