@@ -103,6 +103,8 @@ export type JobCard = {
   applyNote: string | null;
   summary: string;
   effectiveJobAt: string;
+  publishedAt: string | null;
+  firstSeenAt: string;
   datePrecision: "instant" | "date";
   sourcePublishedAt: string | null;
   lastCheckedAt: string | null;
@@ -345,7 +347,7 @@ export class MemoryStore {
       ? encodeCursor({
           sort,
           asOf: asOf.toISOString(),
-          at: last.job.effectiveJobAt,
+          at: last.job.publishedAt ?? last.job.firstSeenAt ?? last.job.effectiveJobAt,
           id: last.job.jobId,
           score: last.score,
         })
@@ -1489,6 +1491,8 @@ function toCard(job: JobRecord, reasons: string[], saved = false): JobCard {
     applyNote: job.applyNote ?? null,
     summary: job.summary,
     effectiveJobAt: job.effectiveJobAt,
+    publishedAt: job.publishedAt,
+    firstSeenAt: job.firstSeenAt,
     datePrecision: job.datePrecision,
     sourcePublishedAt: job.sourcePublishedAt,
     lastCheckedAt: job.lastCheckedAt,
@@ -1509,9 +1513,16 @@ function compareRanked(a: { job: JobRecord; score: number }, b: { job: JobRecord
 }
 
 function afterCursor(item: { job: JobRecord; score: number }, cursor: Cursor, sort: "latest" | "for_you"): boolean {
-  if (sort === "latest") return compareLatest(item.job, { ...item.job, jobId: cursor.id, effectiveJobAt: cursor.at }) > 0;
+  const pivot = {
+    ...item.job,
+    jobId: cursor.id,
+    publishedAt: cursor.at,
+    firstSeenAt: cursor.at,
+    effectiveJobAt: cursor.at,
+  };
+  if (sort === "latest") return compareLatest(item.job, pivot) > 0;
   if (item.score !== cursor.score) return item.score < (cursor.score ?? 0);
-  return compareLatest(item.job, { ...item.job, jobId: cursor.id, effectiveJobAt: cursor.at }) > 0;
+  return compareLatest(item.job, pivot) > 0;
 }
 
 function encodeCursor(cursor: Cursor): string {

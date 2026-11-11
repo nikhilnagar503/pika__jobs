@@ -22,6 +22,8 @@ type AdminJobRecord = {
   emailSubject: string | null;
   accessTier: "free" | "pro";
   effectiveJobAt: string;
+  publishedAt: string | null;
+  firstSeenAt: string;
   sourcePublishedAt: string | null;
   lifecycle: string;
 };
@@ -47,6 +49,8 @@ function toCard(job: AdminJobRecord): JobCardData {
     accessTier: job.accessTier,
     saved: false,
     effectiveJobAt: job.effectiveJobAt,
+    publishedAt: job.publishedAt,
+    firstSeenAt: job.firstSeenAt,
     sourcePublishedAt: job.sourcePublishedAt,
     lifecycle: job.lifecycle,
   };
@@ -68,8 +72,8 @@ export function AdminFeedPage() {
         const cards = [...current.items, ...drafts.items]
           .map(toCard)
           .sort((a, b) => {
-            const aTime = new Date(a.sourcePublishedAt || a.effectiveJobAt || 0).getTime();
-            const bTime = new Date(b.sourcePublishedAt || b.effectiveJobAt || 0).getTime();
+            const aTime = new Date(a.publishedAt || a.firstSeenAt || a.effectiveJobAt || 0).getTime();
+            const bTime = new Date(b.publishedAt || b.firstSeenAt || b.effectiveJobAt || 0).getTime();
             return bTime - aTime;
           });
         setItems(cards);

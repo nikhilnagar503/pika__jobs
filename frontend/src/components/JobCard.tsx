@@ -23,6 +23,8 @@ export type JobCardData = {
   accessTier: "free" | "pro";
   saved: boolean;
   effectiveJobAt?: string;
+  publishedAt?: string | null;
+  firstSeenAt?: string;
   sourcePublishedAt?: string | null;
   lifecycle?: string;
 };
@@ -38,7 +40,7 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const payKey = job.opportunityKind === "internship" ? "Stipend" : "CTC";
-  const postedAt = job.sourcePublishedAt || job.effectiveJobAt;
+  const postedAt = job.publishedAt || job.firstSeenAt || job.effectiveJobAt;
   const mailto = job.hrEmail
     ? `mailto:${job.hrEmail}${job.emailSubject ? `?subject=${encodeURIComponent(job.emailSubject)}` : ""}`
     : null;

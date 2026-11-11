@@ -141,8 +141,12 @@ export function freshnessPoints(effectiveJobAt: string, asOf: Date): number {
   return Math.round((10 * (windowMs - age)) / windowMs);
 }
 
+function platformTime(job: JobRecord): number {
+  return new Date(job.publishedAt ?? job.firstSeenAt ?? job.effectiveJobAt).getTime();
+}
+
 export function compareLatest(a: JobRecord, b: JobRecord): number {
-  const time = new Date(b.effectiveJobAt).getTime() - new Date(a.effectiveJobAt).getTime();
+  const time = platformTime(b) - platformTime(a);
   if (time !== 0) return time;
   return b.jobId < a.jobId ? -1 : b.jobId > a.jobId ? 1 : 0;
 }

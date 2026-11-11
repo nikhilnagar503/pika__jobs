@@ -320,9 +320,8 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
       `${title} at ${company}`,
   ).slice(0, 400);
 
-  const sourcePublishedAt = parsePostedAt(
-    firstString(raw.posted_at, raw.posted_date, raw.posted_or_seen_time, raw.date),
-  );
+  // Platform upload/publish time controls feed order and "time ago".
+  // JSON posted_at is ignored for ranking/visibility.
   const deadlineAt = parsePostedAt(firstString(raw.deadline_at, raw.deadline, raw.apply_by));
 
   const openings = firstString(raw.openings, raw.number_of_openings);
@@ -398,7 +397,7 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
     emailSubject: apply.emailSubject,
     sourceUrl: firstString(raw.source_url, apply.sourceUrl) || apply.sourceUrl,
     externalJobId: key.slice(0, 120),
-    sourcePublishedAt,
+    sourcePublishedAt: null,
     deadlineAt,
     accessTier: firstString(raw.access, raw.access_tier).toLowerCase() === "pro" ? "pro" : "free",
     evidenceExcerpt: `${title} at ${company}. Imported from admin JSON upload.`,
