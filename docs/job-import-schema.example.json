@@ -1,0 +1,128 @@
+{
+  "version": "1.0",
+  "generated_date": "2026-11-11",
+  "category": "Mixed fresher / intern / job listings",
+  "jobs": [
+    {
+      "id": "SWE-INT-001",
+      "title": "Software Engineer Intern",
+      "company": "Merkle Science",
+      "summary": "Backend and full-stack internship for final-year students.",
+      "type": "internship",
+      "sector": "private",
+      "work_mode": "hybrid",
+      "role_family": "software-it",
+      "location": "Bengaluru, Karnataka, India",
+      "country": "IN",
+      "batches": ["2027"],
+      "duration": "6 months",
+      "experience": "Fresher / Final-Year Student",
+      "institutions": "IIT / NIT / IIIT",
+      "skills": ["Python", "FastAPI", "PostgreSQL"],
+      "eligibility": ["Final year B.Tech/B.E.", "Strong DSA basics"],
+      "requirements": ["Python", "REST APIs", "Git"],
+      "responsibilities": ["Build APIs", "Write tests", "Ship weekly demos"],
+      "pay": {
+        "label": "₹30,000–₹50,000/month",
+        "type": "stipend",
+        "currency": "INR",
+        "period": "monthly"
+      },
+      "apply": {
+        "url": "https://example.com/apply/merkle-intern",
+        "note": "Apply on careers page"
+      },
+      "source": "Campus Reality",
+      "posted_at": "2026-11-08",
+      "deadline_at": "2026-11-25",
+      "access": "free"
+    },
+    {
+      "id": "SWE-JOB-002",
+      "title": "Junior Software Engineer",
+      "company": "Example Labs",
+      "type": "job",
+      "sector": "private",
+      "work_mode": "remote",
+      "role_family": "software-it",
+      "location": "India (Remote)",
+      "batches": ["2024", "2025", "2026"],
+      "experience": "0-1 years",
+      "skills": ["JavaScript", "React", "Node.js"],
+      "pay": {
+        "label": "4–8 LPA",
+        "type": "salary",
+        "currency": "INR",
+        "period": "yearly"
+      },
+      "apply": {
+        "url": "https://example.com/jobs/junior-swe",
+        "email": "careers@example.com",
+        "subject": "Junior SWE application"
+      },
+      "posted_at": "2026-11-10",
+      "access": "free"
+    },
+    {
+      "id": "GOV-APP-003",
+      "title": "Graduate Apprentice",
+      "company": "Example PSU",
+      "type": "apprenticeship",
+      "sector": "government",
+      "work_mode": "on_site",
+      "location": "New Delhi, India",
+      "duration": "12 months",
+      "experience": "Fresher",
+      "pay": {
+        "label": "₹9,000/month",
+        "type": "stipend",
+        "currency": "INR",
+        "period": "monthly"
+      },
+      "apply": {
+        "url": "https://example.gov.in/apply"
+      },
+      "posted_at": "2026-11-09"
+    },
+    {
+      "id": "DES-FREE-004",
+      "title": "UI Design Contract",
+      "company": "Studio North",
+      "type": "freelance",
+      "work_mode": "remote",
+      "role_family": "design",
+      "location": "Remote",
+      "duration": "8 weeks",
+      "skills": ["Figma", "UI systems"],
+      "pay": {
+        "label": "₹1,500/hour",
+        "type": "salary",
+        "currency": "INR",
+        "period": "hourly"
+      },
+      "apply": {
+        "email": "hello@studionorth.example"
+      },
+      "posted_at": "2026-11-11"
+    },
+    {
+      "id": "AI-FELLOW-005",
+      "title": "AI Research Fellow",
+      "company": "Open Research Lab",
+      "type": "fellowship",
+      "work_mode": "hybrid",
+      "role_family": "data-ai",
+      "location": "Hyderabad, India",
+      "duration": "3 months",
+      "skills": ["Python", "PyTorch", "NLP"],
+      "pay": {
+        "label": "Unpaid",
+        "type": "unpaid"
+      },
+      "apply": {
+        "url": "https://example.com/fellowship"
+      },
+      "posted_at": "2026-11-07"
+    }
+  ]
+}

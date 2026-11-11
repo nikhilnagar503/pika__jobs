@@ -7,7 +7,7 @@ export type ImportJobDraft = Omit<JobInput, "sourceId"> & {
 };
 
 export type ImportParseResult = {
-  format: "catalog" | "tracker" | "unknown";
+  format: "pikajobs" | "catalog" | "tracker" | "unknown";
   category: string | null;
   generatedDate: string | null;
   drafts: ImportJobDraft[];
@@ -32,31 +32,57 @@ function asStringArray(value: unknown): string[] {
   return value.map((item) => String(item).trim()).filter(Boolean);
 }
 
+function firstString(...values: unknown[]): string {
+  for (const value of values) {
+    const text = asString(value);
+    if (text) return text;
+  }
+  return "";
+}
+
 function mapWorkMode(raw: string): string {
-  const value = raw.toLowerCase();
-  if (value.includes("remote")) return "remote";
+  const value = raw.toLowerCase().replace(/[-\s]+/g, "_");
+  if (value.includes("remote") || value === "wfh") return "remote";
   if (value.includes("hybrid")) return "hybrid";
   if (value.includes("field")) return "field";
-  if (value.includes("on-site") || value.includes("onsite") || value.includes("in-office") || value.includes("office")) {
+  if (
+    value.includes("on_site") ||
+    value.includes("onsite") ||
+    value.includes("in_office") ||
+    value.includes("office") ||
+    value.includes("in-office")
+  ) {
     return "on_site";
   }
   return "not_stated";
 }
 
 function mapOpportunityKind(raw: string): string {
-  const value = raw.toLowerCase();
+  const value = raw.toLowerCase().replace(/[-\s]+/g, "_");
   if (value.includes("intern")) return "internship";
   if (value.includes("apprentice")) return "apprenticeship";
-  if (value.includes("freelance") || value.includes("contract")) return "freelance";
+  if (value.includes("freelance") || value.includes("contract") || value.includes("gig")) return "freelance";
   if (value.includes("fellow")) return "fellowship";
   return "job";
 }
 
+function mapSector(raw: string): string {
+  const value = raw.toLowerCase();
+  if (value.includes("gov") || value.includes("public") || value.includes("psu")) return "government";
+  return "private";
+}
+
 function mapCompensationType(raw: string, opportunityKind: string): string {
   const value = raw.toLowerCase();
+  if (value.includes("unpaid") || value.includes("volunteer")) return "unpaid";
   if (value.includes("stipend")) return "stipend";
-  if (value.includes("salary") || value.includes("ctc") || value.includes("lpa")) return "salary";
-  if (opportunityKind === "internship") return "stipend";
+  if (value.includes("salary") || value.includes("ctc") || value.includes("lpa") || value.includes("package")) {
+    return "salary";
+  }
+  if (opportunityKind === "internship" || opportunityKind === "apprenticeship" || opportunityKind === "fellowship") {
+    return "stipend";
+  }
+  if (!value) return "not_disclosed";
   return "not_disclosed";
 }
 
@@ -65,11 +91,31 @@ function mapRoleFamily(raw: string): string | null {
   if (!value) return null;
   if (value.includes("ml") || value.includes("ai") || value.includes("data")) return "data-ai";
   if (value.includes("product")) return "product";
-  if (value.includes("design")) return "design";
-  if (value.includes("frontend") || value.includes("backend") || value.includes("full") || value.includes("swe") || value.includes("sde")) {
+  if (value.includes("design") || value.includes("ui") || value.includes("ux")) return "design";
+  if (value.includes("market") || value.includes("growth") || value.includes("sales")) return "business";
+  if (
+    value.includes("frontend") ||
+    value.includes("backend") ||
+    value.includes("full") ||
+    value.includes("swe") ||
+    value.includes("sde") ||
+    value.includes("software") ||
+    value.includes("engineer") ||
+    value.includes("developer")
+  ) {
     return "software-it";
   }
   return "software-it";
+}
+
+function mapPayPeriod(raw: string, payLabel: string): string {
+  const value = `${raw} ${payLabel}`.toLowerCase();
+  if (value.includes("year") || value.includes("lpa") || value.includes("ctc") || value.includes("annum")) {
+    return "yearly";
+  }
+  if (value.includes("week")) return "weekly";
+  if (value.includes("hour")) return "hourly";
+  return "monthly";
 }
 
 function extractMailto(value: string): string | null {
@@ -79,121 +125,249 @@ function extractMailto(value: string): string | null {
   return email || null;
 }
 
-function parseApplyLink(applyLink: string): {
+function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function parseApply(raw: Record<string, unknown>, title: string): {
   applicationMethod: "url" | "email" | "both";
   applicationUrl: string | null;
   hrEmail: string | null;
   hrEmailApproved: boolean;
   sourceUrl: string;
+  emailSubject: string;
+  applyNote: string | null;
 } {
-  const email = extractMailto(applyLink);
-  if (email) {
+  const applyObject = raw.apply && typeof raw.apply === "object" && !Array.isArray(raw.apply)
+    ? (raw.apply as Record<string, unknown>)
+    : null;
+
+  const url = firstString(
+    applyObject?.url,
+    applyObject?.link,
+    raw.direct_application_url,
+    raw.apply_link,
+    raw.application_url,
+    raw.apply_url,
+    raw.url,
+  );
+  const emailRaw = firstString(
+    applyObject?.email,
+    applyObject?.hr_email,
+    raw.hr_email,
+    raw.email,
+    raw.apply_email,
+  );
+  const note = firstString(applyObject?.note, raw.apply_note, raw.application_note) || null;
+  const subject =
+    firstString(applyObject?.subject, raw.email_subject, raw.apply_subject) || `${title} application`;
+
+  let applicationUrl: string | null = null;
+  let hrEmail: string | null = null;
+
+  const mailto = extractMailto(url);
+  if (mailto) hrEmail = mailto;
+  else if (/^https?:\/\//i.test(url)) applicationUrl = url;
+  else if (looksLikeEmail(url)) hrEmail = url;
+
+  if (emailRaw) {
+    const fromMailto = extractMailto(emailRaw);
+    hrEmail = fromMailto || (looksLikeEmail(emailRaw) ? emailRaw : hrEmail);
+  }
+
+  if (!applicationUrl && !hrEmail) {
+    return {
+      applicationMethod: "url",
+      applicationUrl: null,
+      hrEmail: null,
+      hrEmailApproved: false,
+      sourceUrl: "https://pikajobs.com",
+      emailSubject: subject,
+      applyNote: note,
+    };
+  }
+
+  if (applicationUrl && hrEmail) {
+    return {
+      applicationMethod: "both",
+      applicationUrl,
+      hrEmail,
+      hrEmailApproved: true,
+      sourceUrl: applicationUrl,
+      emailSubject: subject,
+      applyNote: note,
+    };
+  }
+
+  if (hrEmail) {
     return {
       applicationMethod: "email",
       applicationUrl: null,
-      hrEmail: email,
+      hrEmail,
       hrEmailApproved: true,
       sourceUrl: "https://pikajobs.com",
+      emailSubject: subject,
+      applyNote: note,
     };
   }
-  if (/^https?:\/\//i.test(applyLink)) {
-    return {
-      applicationMethod: "url",
-      applicationUrl: applyLink,
-      hrEmail: null,
-      hrEmailApproved: false,
-      sourceUrl: applyLink,
-    };
-  }
+
   return {
     applicationMethod: "url",
-    applicationUrl: null,
+    applicationUrl,
     hrEmail: null,
     hrEmailApproved: false,
-    sourceUrl: "https://pikajobs.com",
+    sourceUrl: applicationUrl || "https://pikajobs.com",
+    emailSubject: subject,
+    applyNote: note,
   };
 }
 
-function durationFromJobType(jobType: string): string | null {
-  const match = jobType.match(/(\d+\s*months?)/i);
-  return match ? match[1] : null;
+function durationFromText(...values: string[]): string | null {
+  for (const value of values) {
+    if (!value) continue;
+    const match = value.match(/(\d+\s*-\s*\d+\s*months?|\d+\s*months?|\d+\s*weeks?)/i);
+    if (match) return match[1].replace(/\s+/g, " ");
+  }
+  return null;
+}
+
+function parsePostedAt(...values: string[]): string | null {
+  for (const postedRaw of values) {
+    if (!postedRaw) continue;
+    const parsed = new Date(postedRaw.replace(" IST", "").replace(" ", "T"));
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+  return null;
 }
 
 function draftFromCatalogJob(raw: Record<string, unknown>, index: number): ImportJobDraft | { skipped: true; key: string; reason: string } {
-  const title = cleanAlertNoise(asString(raw.job_title) || asString(raw.role) || asString(raw.title));
-  const company = cleanAlertNoise(asString(raw.company) || asString(raw.company_name));
-  const applyLink =
-    asString(raw.direct_application_url) ||
-    asString(raw.apply_link) ||
-    asString(raw.application_url) ||
-    asString(raw.url);
-  const key = asString(raw.id) || `${company}-${title}-${index}`;
+  const title = cleanAlertNoise(
+    firstString(raw.title, raw.job_title, raw.role, raw.position, raw.designation),
+  );
+  const company = cleanAlertNoise(
+    firstString(raw.company, raw.company_name, raw.organization, raw.org),
+  );
+  const key = firstString(raw.id, raw.external_id, raw.job_id) || `${company}-${title}-${index}`;
 
   if (!title || !company) {
     return { skipped: true, key, reason: "Missing job title or company." };
   }
-  if (!applyLink) {
-    return { skipped: true, key, reason: "Missing application link." };
+
+  const apply = parseApply(raw, title);
+  if (!apply.applicationUrl && !apply.hrEmail) {
+    return { skipped: true, key, reason: "Missing application link or email." };
   }
 
-  const opportunityKind = mapOpportunityKind(asString(raw.job_type) || asString(raw.role_type) || title);
-  const location = asString(raw.location);
-  const batches = asStringArray(raw.eligible_batches);
-  const skills = asStringArray(raw.key_skills).length
-    ? asStringArray(raw.key_skills)
-    : asStringArray(raw.skills);
-  const apply = parseApplyLink(applyLink);
-  const compensation = asString(raw.compensation) || asString(raw.stipend);
-  const experience = asString(raw.experience_level);
-  const institutions = asString(raw.target_institutions);
-  const postedRaw = asString(raw.posted_date) || asString(raw.posted_or_seen_time);
-  let sourcePublishedAt: string | null = null;
-  if (postedRaw) {
-    const parsed = new Date(postedRaw.replace(" IST", "").replace(" ", "T"));
-    if (!Number.isNaN(parsed.getTime())) sourcePublishedAt = parsed.toISOString();
-  }
-  const summaryParts = [
-    experience ? `Level: ${experience}.` : "",
-    institutions ? `Target: ${institutions}.` : "",
-    compensation ? `Pay: ${compensation}.` : "",
-    location ? `Location: ${location}.` : "",
-  ].filter(Boolean);
+  const opportunityKind = mapOpportunityKind(
+    firstString(raw.type, raw.opportunity_kind, raw.job_type, raw.role_type, raw.employment_type, title),
+  );
+  const location = firstString(raw.location, raw.location_label, raw.city);
+  const batches = asStringArray(raw.batches).length
+    ? asStringArray(raw.batches)
+    : asStringArray(raw.eligible_batches);
+  const skills = asStringArray(raw.skills).length
+    ? asStringArray(raw.skills)
+    : asStringArray(raw.key_skills);
+  const eligibility = asStringArray(raw.eligibility);
+  const requirements = asStringArray(raw.requirements);
+  const responsibilities = asStringArray(raw.responsibilities);
+
+  const payObject = raw.pay && typeof raw.pay === "object" && !Array.isArray(raw.pay)
+    ? (raw.pay as Record<string, unknown>)
+    : null;
+  const compensation = firstString(
+    payObject?.label,
+    payObject?.display,
+    raw.compensation,
+    raw.stipend,
+    raw.salary,
+    raw.ctc,
+    raw.pay_label,
+  );
+  const compensationType = mapCompensationType(
+    firstString(payObject?.type, raw.compensation_type, compensation),
+    opportunityKind,
+  );
+  const payCurrency = firstString(payObject?.currency, raw.pay_currency, raw.currency) || "INR";
+  const payPeriod = mapPayPeriod(firstString(payObject?.period, raw.pay_period), compensation);
+
+  const experience = firstString(raw.experience, raw.experience_level, raw.seniority);
+  const institutions = firstString(raw.institutions, raw.target_institutions, raw.colleges);
+  const durationLabel =
+    firstString(raw.duration, raw.duration_label) ||
+    durationFromText(firstString(raw.type, raw.job_type, raw.role_type));
+  const summary = cleanAlertNoise(
+    firstString(raw.summary, raw.description) ||
+      [
+        experience ? `Level: ${experience}.` : "",
+        institutions ? `Target: ${institutions}.` : "",
+        compensation ? `Pay: ${compensation}.` : "",
+        location ? `Location: ${location}.` : "",
+      ]
+        .filter(Boolean)
+        .join(" ") ||
+      `${title} at ${company}`,
+  ).slice(0, 400);
+
+  const sourcePublishedAt = parsePostedAt(
+    firstString(raw.posted_at, raw.posted_date, raw.posted_or_seen_time, raw.date),
+  );
+  const deadlineAt = parsePostedAt(firstString(raw.deadline_at, raw.deadline, raw.apply_by));
+
+  const builtEligibility = [
+    ...eligibility,
+    ...(batches.length ? [`Eligible batches: ${batches.join("/")}`] : []),
+    ...(institutions ? [institutions] : []),
+    ...(experience ? [experience] : []),
+  ]
+    .map((item) => cleanAlertNoise(item))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  const builtRequirements = (requirements.length ? requirements : skills.map((skill) => `Skill: ${skill}`))
+    .map((item) => cleanAlertNoise(item))
+    .filter(Boolean)
+    .slice(0, 8);
 
   return {
     importKey: key,
     title,
     companyName: company,
-    summary: cleanAlertNoise(summaryParts.join(" ") || `${title} at ${company}`).slice(0, 400),
+    summary,
     opportunityKind,
-    sector: "private",
-    workMode: mapWorkMode(asString(raw.work_arrangement) || location),
-    roleFamilySlug: mapRoleFamily(asString(raw.role_type) || title),
+    sector: mapSector(firstString(raw.sector, raw.category_sector)),
+    workMode: mapWorkMode(
+      firstString(raw.work_mode, raw.work_arrangement, raw.mode, location),
+    ),
+    roleFamilySlug: mapRoleFamily(
+      firstString(raw.role_family, raw.role_type, raw.domain, title),
+    ),
     locationLabel: location || "India",
     locationUnknown: !location,
+    countryCode: firstString(raw.country, raw.country_code) || "IN",
     skills: skills.slice(0, 8),
-    eligibility: [
-      ...(batches.length ? [`Eligible batches: ${batches.join("/")}`] : []),
-      ...(institutions ? [institutions] : []),
-      ...(experience ? [experience] : []),
-    ].slice(0, 6),
-    requirements: skills.slice(0, 8).map((skill) => `Skill: ${skill}`),
-    responsibilities: [],
-    batchLabel: batches.length ? batches.join("/") : null,
-    durationLabel: durationFromJobType(asString(raw.job_type)),
-    originalSourceLabel: asString(raw.source) || asString(raw.category) || "JSON import",
+    eligibility: builtEligibility,
+    requirements: builtRequirements,
+    responsibilities: responsibilities.map((item) => cleanAlertNoise(item)).filter(Boolean).slice(0, 8),
+    batchLabel: batches.length ? batches.join("/") : firstString(raw.batch_label) || null,
+    durationLabel,
+    originalSourceLabel:
+      firstString(raw.source, raw.original_source, raw.category) || "JSON import",
     payDisplayLabel: compensation || null,
-    compensationType: mapCompensationType(asString(raw.compensation_type) || compensation, opportunityKind),
-    payCurrency: "INR",
-    payPeriod: /lpa|year|ctc/i.test(compensation) ? "yearly" : "monthly",
+    applyNote: apply.applyNote,
+    compensationType,
+    payCurrency,
+    payPeriod,
     applicationMethod: apply.applicationMethod,
     applicationUrl: apply.applicationUrl,
     hrEmail: apply.hrEmail,
     hrEmailApproved: apply.hrEmailApproved,
-    emailSubject: `${title} application`,
-    sourceUrl: apply.sourceUrl,
+    emailSubject: apply.emailSubject,
+    sourceUrl: firstString(raw.source_url, apply.sourceUrl) || apply.sourceUrl,
     externalJobId: key.slice(0, 120),
     sourcePublishedAt,
-    accessTier: "free",
+    deadlineAt,
+    accessTier: firstString(raw.access, raw.access_tier).toLowerCase() === "pro" ? "pro" : "free",
     evidenceExcerpt: `${title} at ${company}. Imported from admin JSON upload.`,
   };
 }
@@ -221,26 +395,24 @@ export function parseJobImportJson(payload: unknown): ImportParseResult {
     throw new Error("No jobs found. Expected keys like jobs, telegram_jobs, or scraped_jobs.");
   }
 
+  const hasPikajobsFields = rows.some(
+    (row) => "apply" in row || "pay" in row || ("title" in row && "type" in row),
+  );
   const hasCatalogFields = rows.some((row) => "job_title" in row || "direct_application_url" in row);
   const hasTrackerFields = rows.some((row) => "role" in row || "apply_link" in row);
-  const format = hasCatalogFields ? "catalog" : hasTrackerFields ? "tracker" : "unknown";
+  const format = hasPikajobsFields
+    ? "pikajobs"
+    : hasCatalogFields
+      ? "catalog"
+      : hasTrackerFields
+        ? "tracker"
+        : "unknown";
 
   const drafts: ImportJobDraft[] = [];
   const skipped: Array<{ key: string; reason: string }> = [];
 
   rows.forEach((row, index) => {
-    const mapped = draftFromCatalogJob(
-      {
-        ...row,
-        job_title: row.job_title ?? row.role ?? row.title,
-        direct_application_url: row.direct_application_url ?? row.apply_link,
-        compensation: row.compensation ?? row.stipend,
-        work_arrangement: row.work_arrangement ?? row.location,
-        job_type: row.job_type ?? row.role_type,
-      },
-      index,
-    );
-
+    const mapped = draftFromCatalogJob(row, index);
     if ("skipped" in mapped && mapped.skipped) {
       skipped.push({ key: mapped.key, reason: mapped.reason });
       return;
