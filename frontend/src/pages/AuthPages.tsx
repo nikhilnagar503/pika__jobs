@@ -46,6 +46,7 @@ export function SignUpPage() {
   const { signUp, user, configured } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
   const navigate = useNavigate();
 
   if (user) return <Navigate to="/feed" replace />;
@@ -55,14 +56,37 @@ export function SignUpPage() {
     setLoading(true);
     setError("");
     const data = new FormData(event.currentTarget);
+    const email = String(data.get("email"));
     try {
-      await signUp(String(data.get("email")), String(data.get("password")), String(data.get("name") || ""));
+      const result = await signUp(email, String(data.get("password")), String(data.get("name") || ""));
+      if (result.needsEmailConfirmation) {
+        setPendingEmail(email);
+        return;
+      }
       navigate("/feed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign up.");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (pendingEmail) {
+    return (
+      <main className="wrap" style={{ maxWidth: 480, paddingTop: 48 }}>
+        <h1>Check your email</h1>
+        <div className="panel">
+          <p>
+            We sent a confirmation link to <strong>{pendingEmail}</strong>.
+          </p>
+          <p className="muted">Open that email, confirm your account, then sign in.</p>
+          <p className="muted">If nothing arrives in a minute, check spam — or confirm Resend/Supabase SMTP is verified.</p>
+        </div>
+        <p className="muted">
+          Ready? <Link to="/auth/sign-in">Sign in</Link>
+        </p>
+      </main>
+    );
   }
 
   return (

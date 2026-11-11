@@ -8,7 +8,11 @@ type AuthState = {
   user: User | null;
   configured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    displayName: string,
+  ) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
 };
 
@@ -37,16 +41,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signIn(email, password) {
         if (!supabase) throw new Error("Supabase is not configured.");
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (/email not confirmed/i.test(error.message)) {
+            throw new Error("Confirm your email first. Check your inbox for the Pikajobs link.");
+          }
+          throw error;
+        }
       },
       async signUp(email, password, displayName) {
         if (!supabase) throw new Error("Supabase is not configured.");
-        const { error } = await supabase.auth.signUp({
+        const redirectTo = `${window.location.origin}/feed`;
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { display_name: displayName, adult_confirmed: true } },
+          options: {
+            emailRedirectTo: redirectTo,
+            data: { display_name: displayName, adult_confirmed: true },
+          },
         });
         if (error) throw error;
+        // Supabase returns an empty identities list when the email is already registered.
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          throw new Error("An account with this email already exists. Sign in instead.");
+        }
+        return { needsEmailConfirmation: !data.session };
       },
       async signOut() {
         if (!supabase) return;
