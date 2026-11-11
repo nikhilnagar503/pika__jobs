@@ -389,6 +389,8 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
     compensationType,
     payCurrency,
     payPeriod,
+    payMinMinor: compensationType === "unpaid" ? 0 : null,
+    payMaxMinor: compensationType === "unpaid" ? 0 : null,
     applicationMethod: apply.applicationMethod,
     applicationUrl: apply.applicationUrl,
     hrEmail: apply.hrEmail,

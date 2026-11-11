@@ -1403,6 +1403,19 @@ export class MemoryStore {
     );
   }
 
+  findLiveExternalJob(sourceId: string, externalJobId: string | null | undefined): JobRecord | null {
+    if (!externalJobId) return null;
+    return (
+      [...this.db.jobsCurrent, ...this.db.drafts].find(
+        (item) =>
+          item.sourceId === sourceId &&
+          item.externalJobId === externalJobId &&
+          item.lifecycle !== "archived" &&
+          item.lifecycle !== "removed",
+      ) ?? null
+    );
+  }
+
   private crossSourceDuplicate(job: JobRecord): boolean {
     const key = fingerprint([job.companyName, job.title, job.locationLabel]);
     return [...this.db.jobsCurrent, ...this.db.drafts].some((item) => item.jobId !== job.jobId && item.sourceId !== job.sourceId && fingerprint([item.companyName, item.title, item.locationLabel]) === key);

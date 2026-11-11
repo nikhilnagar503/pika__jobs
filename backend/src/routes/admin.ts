@@ -163,8 +163,31 @@ adminRouter.post(
       }
 
       try {
-        const { importKey: _key, skipped: _skipped, skipReason: _reason, ...input } = draft;
-        const saved = req.store.saveJob(actor, { ...input, sourceId: source.id } as JobInput);
+        const {
+          importKey: _key,
+          skipped: _skipped,
+          skipReason: _reason,
+          jobId: _jobId,
+          expectedVersion: _expectedVersion,
+          ...input
+        } = draft;
+        const externalJobId =
+          typeof input.externalJobId === "string" && input.externalJobId
+            ? input.externalJobId
+            : importKey;
+        const already = req.store.findLiveExternalJob(source.id, externalJobId);
+        if (already) {
+          skipped.push({
+            key: importKey,
+            reason: `Already imported: ${already.companyName} · ${already.title}`,
+          });
+          continue;
+        }
+        const saved = req.store.saveJob(actor, {
+          ...input,
+          sourceId: source.id,
+          externalJobId,
+        } as JobInput);
         const published = publish ? req.store.publishJob(actor, saved.jobId) : saved;
         seen.add(key);
         created.push({
@@ -174,7 +197,10 @@ adminRouter.post(
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Import failed.";
-        if (error instanceof AppError && error.code === "duplicate_listing") {
+        if (
+          error instanceof AppError &&
+          (error.code === "duplicate_listing" || error.code === "version_required" || error.code === "archived")
+        ) {
           skipped.push({ key: importKey, reason: message });
         } else {
           failed.push({ importKey, message });

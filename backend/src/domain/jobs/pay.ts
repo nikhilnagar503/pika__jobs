@@ -93,7 +93,9 @@ export function payIsComparable(input: PayInput, filter: {
 
 export function validatePay(input: PayInput): string | null {
   if (input.compensationType === "unpaid") {
-    if (input.payMinMinor !== 0 || (input.payMaxMinor != null && input.payMaxMinor !== 0)) {
+    const min = input.payMinMinor ?? 0;
+    const max = input.payMaxMinor ?? 0;
+    if (min !== 0 || max !== 0) {
       return "Unpaid listings use zero amounts.";
     }
     return null;
