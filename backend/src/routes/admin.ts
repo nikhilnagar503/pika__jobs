@@ -222,6 +222,41 @@ adminRouter.delete(
   }),
 );
 
+adminRouter.post(
+  "/jobs/:id/delete",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    res.json(req.store.deleteJob(actor, req.params.id));
+  }),
+);
+
+adminRouter.post(
+  "/jobs/delete-many",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    const ids = Array.isArray(req.body?.jobIds)
+      ? req.body.jobIds.filter((id: unknown): id is string => typeof id === "string" && Boolean(id))
+      : [];
+    if (!ids.length) {
+      throw new AppError(422, "invalid_import", "Select at least one job to delete.");
+    }
+    const deleted: string[] = [];
+    const failed: Array<{ jobId: string; message: string }> = [];
+    for (const jobId of ids) {
+      try {
+        req.store.deleteJob(actor, jobId);
+        deleted.push(jobId);
+      } catch (error) {
+        failed.push({
+          jobId,
+          message: error instanceof Error ? error.message : "Could not delete.",
+        });
+      }
+    }
+    res.json({ deletedCount: deleted.length, failedCount: failed.length, deleted, failed });
+  }),
+);
+
 adminRouter.get(
   "/sources",
   asyncHandler(async (req, res) => {
