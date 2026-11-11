@@ -11,10 +11,21 @@ import { meRouter } from "@/routes/me";
 
 const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    // API is called from the Vercel frontend on another origin.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  }),
+);
 app.use(
   cors({
-    origin: env.frontendOrigins,
+    origin(origin, callback) {
+      if (!origin || env.frontendOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     credentials: true,
   }),
 );
