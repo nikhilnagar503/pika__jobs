@@ -5,6 +5,7 @@ import { AdminJobsPage } from "@/pages/admin/JobsPage";
 import { AdminLayout } from "@/pages/admin/Layout";
 import { AdminNewJobPage } from "@/pages/admin/NewJobPage";
 import { AdminOverviewPage } from "@/pages/admin/OverviewPage";
+import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { SignInPage, SignUpPage } from "@/pages/AuthPages";
 import { FeedPage } from "@/pages/FeedPage";
 import { HomePage } from "@/pages/HomePage";
@@ -18,6 +19,7 @@ export function App() {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/auth/sign-in" element={<SignInPage />} />
         <Route path="/auth/sign-up" element={<SignUpPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
       </Route>
 
       <Route element={<MemberShell />}>

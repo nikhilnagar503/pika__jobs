@@ -50,7 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signUp(email, password, displayName) {
         if (!supabase) throw new Error("Supabase is not configured.");
-        const redirectTo = `${window.location.origin}/feed`;
+        // Always send confirmation links to the real domain — never a Vercel preview URL.
+        const appOrigin =
+          import.meta.env.VITE_APP_URL?.replace(/\/$/, "") ||
+          (window.location.hostname.endsWith("pikajobs.com")
+            ? window.location.origin
+            : "https://pikajobs.com");
+        const redirectTo = `${appOrigin}/auth/callback`;
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
