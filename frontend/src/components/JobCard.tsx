@@ -66,7 +66,6 @@ export function JobCard({ job }: { job: JobCardData }) {
         <p><strong>{payKey}:</strong> {job.payLabel}</p>
         <p><strong>Location:</strong> {job.locationLabel}</p>
         {job.durationLabel && <p><strong>Duration:</strong> {job.durationLabel}</p>}
-        {job.originalSourceLabel && <p className="alert-source"><strong>Original source:</strong> {job.originalSourceLabel}</p>}
         {job.eligibility.length > 0 && (
           <section className="alert-section">
             <p><strong>Eligibility:</strong></p>

@@ -383,8 +383,7 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
     responsibilities: responsibilities.map((item) => cleanAlertNoise(item)).filter(Boolean).slice(0, 8),
     batchLabel: batches.length ? batches.join("/") : firstString(raw.batch_label) || null,
     durationLabel,
-    originalSourceLabel:
-      firstString(raw.source, raw.original_source, raw.category) || "JSON import",
+    originalSourceLabel: null,
     payDisplayLabel: compensation || null,
     applyNote: apply.applyNote,
     compensationType,
