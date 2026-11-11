@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { product } from "@/shared/product";
-import { insertSponsorSlots } from "@/server/domain/ads";
-import { formatPay } from "@/server/domain/jobs/pay";
-import { isVisibleAt } from "@/server/domain/jobs/visibility";
-import { checkoutSignature, commissionMinor, safeEqualHex, webhookSignature } from "@/server/domain/money";
-import { buildMailto, escapeCsvCell, isBlockedFetchTarget } from "@/server/domain/safety";
-import { AppError } from "@/server/http";
-import { balances } from "@/server/repositories/db";
-import { MemoryStore, type JobInput } from "@/server/repositories/memory";
-import type { Actor, JobRecord } from "@/server/domain/types";
+import { insertSponsorSlots } from "@/domain/ads";
+import { formatPay } from "@/domain/jobs/pay";
+import { isVisibleAt } from "@/domain/jobs/visibility";
+import { checkoutSignature, commissionMinor, safeEqualHex, webhookSignature } from "@/domain/money";
+import { buildMailto, escapeCsvCell, isBlockedFetchTarget } from "@/domain/safety";
+import { AppError } from "@/http";
+import { balances } from "@/repositories/db";
+import { MemoryStore, type JobInput } from "@/repositories/memory";
+import type { Actor, JobRecord } from "@/domain/types";
 
 const now = new Date("2026-11-10T08:00:00.000Z");
 const day = 24 * 60 * 60 * 1000;
@@ -386,7 +386,7 @@ describe("safety and ads", () => {
     expect(escapeCsvCell("=cmd()")).toBe("'=cmd()");
   });
 
-  it("inserts a sponsored slot after every 10 organic jobs and skips Pro", () => {
+  it("keeps sponsor slot math, but feed ads stay paused", () => {
     const jobs = Array.from({ length: 20 }, (_, index) => index + 1);
     const slotted = insertSponsorSlots(jobs, 0, 10, "camp");
     expect(slotted.filter((item) => item.type === "sponsored")).toHaveLength(2);
@@ -406,18 +406,8 @@ describe("safety and ads", () => {
     for (let index = 0; index < 10; index += 1) db.db.jobsCurrent.push(fakeJob(index));
     const free = member(db, "adfree@example.com").actor;
     const page = db.listFeed(free, { sort: "latest", now });
-    expect(page.items.some((item) => item.type === "sponsored")).toBe(true);
-    const buyer = member(db, "pro@example.com");
-    db.db.entitlements.push({
-      id: "ent",
-      userId: buyer.user.userId,
-      orderId: "none",
-      startsAt: now.toISOString(),
-      endsAt: new Date(now.getTime() + 30 * day).toISOString(),
-      state: "active",
-    });
-    const pro = db.listFeed(db.actorFor(buyer.user.userId, now), { sort: "latest", now });
-    expect(pro.items.some((item) => item.type === "sponsored")).toBe(false);
+    // Ads insertion is intentionally disabled in MemoryStore.sponsorId for now.
+    expect(page.items.some((item) => item.type === "sponsored")).toBe(false);
   });
 
   it("verifies webhook signatures against the raw body", () => {
@@ -469,6 +459,13 @@ function fakeJob(index: number): JobRecord {
     eligibleCountries: ["IN"],
     skills: ["TypeScript"],
     requirements: [],
+    eligibility: [],
+    responsibilities: [],
+    batchLabel: null,
+    durationLabel: null,
+    originalSourceLabel: null,
+    payDisplayLabel: null,
+    applyNote: null,
     compensationType: "not_disclosed",
     payMinMinor: null,
     payMaxMinor: null,

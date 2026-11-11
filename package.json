@@ -1,31 +1,22 @@
 {
   "name": "pikajobs",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:frontend": "npm run dev --workspace=@pikajobs/frontend",
+    "dev:backend": "npm run dev --workspace=@pikajobs/backend",
+    "build": "npm run build --workspace=@pikajobs/frontend",
+    "start:backend": "npm run start --workspace=@pikajobs/backend",
+    "typecheck": "npm run typecheck --workspace=@pikajobs/backend && npm run typecheck --workspace=@pikajobs/frontend",
     "test": "vitest run",
     "worker": "tsx workers/src/index.ts"
   },
-  "dependencies": {
-    "@clerk/nextjs": "^7.9.25",
-    "@supabase/ssr": "0.12.7",
-    "@supabase/supabase-js": "2.119.0",
-    "next": "16.4.6",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "zod": "4.6.7"
-  },
   "devDependencies": {
-    "@types/node": "^24",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.4.6",
     "tsx": "4.20.6",
     "typescript": "^5",
     "vitest": "5.1.0"

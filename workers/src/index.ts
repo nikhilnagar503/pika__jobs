@@ -1,4 +1,4 @@
-import { withStore } from "../../src/server/repositories/file-store";
+import { withStore } from "../../backend/src/repositories/file-store";
 
 const command = process.argv[2] ?? "archive";
 
