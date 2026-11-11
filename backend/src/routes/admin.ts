@@ -1,6 +1,8 @@
 import { Router } from "express";
 import type { JobInput } from "@/repositories/memory";
+import { AppError } from "@/http";
 import { asyncHandler, requireAdmin } from "@/middleware/store";
+import { parseJobImportJson } from "@/shared/job-json-import";
 
 export const adminRouter = Router();
 
@@ -39,6 +41,59 @@ adminRouter.post(
     const saved = req.store.saveJob(actor, input);
     if (publish) req.store.publishJob(actor, saved.jobId);
     res.status(201).json({ jobId: saved.jobId, lifecycle: publish ? "published" : saved.lifecycle, publish });
+  }),
+);
+
+adminRouter.post(
+  "/jobs/import",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    const publish = req.body?.publish === true;
+    let parsed;
+    try {
+      parsed = parseJobImportJson(req.body?.payload ?? req.body);
+    } catch (error) {
+      throw new AppError(
+        422,
+        "invalid_import",
+        error instanceof Error ? error.message : "Could not parse job JSON.",
+      );
+    }
+
+    const source = req.store.ensureManualListingSource(actor);
+    const created: Array<{ importKey: string; jobId: string; lifecycle: string }> = [];
+    const failed: Array<{ importKey: string; message: string }> = [];
+
+    for (const draft of parsed.drafts) {
+      try {
+        const { importKey, ...input } = draft;
+        const saved = req.store.saveJob(actor, { ...input, sourceId: source.id } as JobInput);
+        const published = publish ? req.store.publishJob(actor, saved.jobId) : saved;
+        created.push({
+          importKey,
+          jobId: published.jobId,
+          lifecycle: published.lifecycle,
+        });
+      } catch (error) {
+        failed.push({
+          importKey: draft.importKey,
+          message: error instanceof Error ? error.message : "Import failed.",
+        });
+      }
+    }
+
+    res.status(201).json({
+      format: parsed.format,
+      category: parsed.category,
+      generatedDate: parsed.generatedDate,
+      publish,
+      createdCount: created.length,
+      skippedCount: parsed.skipped.length,
+      failedCount: failed.length,
+      created,
+      skipped: parsed.skipped,
+      failed,
+    });
   }),
 );
 

@@ -27,7 +27,10 @@ export function AdminJobsPage() {
           <h1>Jobs</h1>
           <p className="muted">Current listings in the API store.</p>
         </div>
-        <Link className="btn-primary" to="/admin/jobs/new">Post a job</Link>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link className="btn-ghost" to="/admin/jobs/import">Import JSON</Link>
+          <Link className="btn-primary" to="/admin/jobs/new">Post a job</Link>
+        </div>
       </header>
       {error && <p className="error">{error}</p>}
       <div className="admin-job-list">

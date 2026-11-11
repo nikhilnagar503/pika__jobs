@@ -20,6 +20,7 @@ export function AdminLayout() {
           <NavLink to="/admin" end>Overview</NavLink>
           <NavLink to="/admin/jobs" end>Jobs</NavLink>
           <NavLink to="/admin/jobs/new">Post a job</NavLink>
+          <NavLink to="/admin/jobs/import">Import JSON</NavLink>
         </div>
         <Link className="admin-exit" to="/feed">Exit to feed</Link>
       </aside>
