@@ -11,7 +11,7 @@ export const product = {
   attributionWindowDays: 30,
   payoutMinimumMinor: 50000,
   visibilityWindowMs: 14 * 24 * 60 * 60 * 1000,
-  pageSize: 20,
+  pageSize: 50,
   adInterval: 10,
   adminEmail: "nagarn603@gmail.com",
   rankingVersion: 1,

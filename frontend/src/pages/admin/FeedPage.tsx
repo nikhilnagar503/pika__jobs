@@ -114,13 +114,13 @@ export function AdminFeedPage() {
           <button className="btn-ghost" type="submit">Search</button>
           <button className="feed-clear" type="button" onClick={() => setQ("")}>Clear</button>
         </form>
-        <p className="feed-count">{filtered.length} listings</p>
+        <p className="feed-count">{filtered.length} listings · last 14 days</p>
       </div>
 
       {loading && <p className="muted">Loading admin feed…</p>}
       {error && <p className="error">{error}</p>}
 
-      <div className="feed">
+      <div className="feed admin-feed-list">
         {filtered.map((job) => (
           <JobCard
             key={job.id}
