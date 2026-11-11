@@ -107,7 +107,7 @@ export function AdminImportJobsPage() {
             Publish imported listings to the feed immediately
           </label>
           <p className="muted">
-            Tracker statuses `skipped` and `applied` are ignored. Other rows are mapped into Pikajobs listings.
+            Every row with a title, company, and apply link is mapped into a Pikajobs listing.
           </p>
           <button className="btn-primary" type="submit" disabled={loading || !payload}>
             {loading ? "Importing…" : "Import jobs"}

@@ -220,16 +220,6 @@ export function parseJobImportJson(payload: unknown): ImportParseResult {
   const skipped: Array<{ key: string; reason: string }> = [];
 
   rows.forEach((row, index) => {
-    const status = asString(row.status).toLowerCase();
-    // Personal tracker statuses that should not become public listings by default.
-    if (status === "skipped" || status === "applied") {
-      skipped.push({
-        key: asString(row.id) || `${asString(row.company)}-${asString(row.role)}-${index}`,
-        reason: `Skipped tracker status: ${status}`,
-      });
-      return;
-    }
-
     const mapped = draftFromCatalogJob(
       {
         ...row,
