@@ -18,7 +18,8 @@ export function AdminLayout() {
         <div className="admin-nav-group">
           <p className="admin-nav-label">Operate</p>
           <NavLink to="/admin" end>Overview</NavLink>
-          <NavLink to="/admin/jobs" end>Jobs</NavLink>
+          <NavLink to="/admin/feed">Admin feed</NavLink>
+          <NavLink to="/admin/jobs" end>Jobs list</NavLink>
           <NavLink to="/admin/jobs/new">Post a job</NavLink>
           <NavLink to="/admin/jobs/import">Import JSON</NavLink>
         </div>

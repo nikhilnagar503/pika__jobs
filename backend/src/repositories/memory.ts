@@ -743,6 +743,13 @@ export class MemoryStore {
     return this.db.jobsCurrent;
   }
 
+  getAdminJob(actor: Actor, jobId: string) {
+    this.requireRole(actor, ["admin", "reviewer"]);
+    const job = this.findAny(jobId);
+    if (!job) throw new AppError(404, "not_available", "This listing is not available.");
+    return job;
+  }
+
   overview(actor: Actor, now = new Date()) {
     this.requireRole(actor, ["admin", "reviewer"]);
     return {

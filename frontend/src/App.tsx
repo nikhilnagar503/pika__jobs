@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { MemberShell, PublicShell } from "@/components/Shell";
 import { AccountPage } from "@/pages/AccountPage";
+import { AdminEditJobPage } from "@/pages/admin/EditJobPage";
+import { AdminFeedPage } from "@/pages/admin/FeedPage";
 import { AdminImportJobsPage } from "@/pages/admin/ImportJobsPage";
 import { AdminJobsPage } from "@/pages/admin/JobsPage";
 import { AdminLayout } from "@/pages/admin/Layout";
@@ -32,9 +34,11 @@ export function App() {
 
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminOverviewPage />} />
+        <Route path="feed" element={<AdminFeedPage />} />
         <Route path="jobs" element={<AdminJobsPage />} />
         <Route path="jobs/new" element={<AdminNewJobPage />} />
         <Route path="jobs/import" element={<AdminImportJobsPage />} />
+        <Route path="jobs/:id/edit" element={<AdminEditJobPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

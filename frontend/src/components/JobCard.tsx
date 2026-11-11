@@ -24,11 +24,19 @@ export type JobCardData = {
   saved: boolean;
   effectiveJobAt?: string;
   sourcePublishedAt?: string | null;
+  lifecycle?: string;
 };
 
-export function JobCard({ job }: { job: JobCardData }) {
+type JobCardProps = {
+  job: JobCardData;
+  mode?: "member" | "admin";
+  onDeleted?: (jobId: string) => void;
+};
+
+export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
   const [saved, setSaved] = useState(job.saved);
   const [pending, setPending] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const payKey = job.opportunityKind === "internship" ? "Stipend" : "CTC";
   const postedAt = job.sourcePublishedAt || job.effectiveJobAt;
   const mailto = job.hrEmail
@@ -45,23 +53,64 @@ export function JobCard({ job }: { job: JobCardData }) {
     }
   }
 
+  async function deleteJob() {
+    setPending(true);
+    try {
+      await api(`/api/v1/admin/jobs/${job.id}/delete`, { method: "POST" });
+      onDeleted?.(job.id);
+    } finally {
+      setPending(false);
+      setConfirmDelete(false);
+    }
+  }
+
   return (
     <article className="job alert-card">
       <header className="alert-head">
         <div className="alert-head-meta">
           <p className="alert-kind">{job.opportunityKind.replaceAll("_", " ")}</p>
           <p className="alert-time">{formatRelativeTime(postedAt)}</p>
+          {job.lifecycle && mode === "admin" && <p className="alert-time">{job.lifecycle}</p>}
         </div>
         <div className="alert-head-actions">
           {job.accessTier === "pro" && <span className="flag">Pro</span>}
-          <button className="btn-ghost save-btn" type="button" onClick={toggleSave} disabled={pending} aria-pressed={saved}>
-            {pending ? "…" : saved ? "Saved" : "Save"}
-          </button>
+          {mode === "admin" ? (
+            <>
+              <Link className="btn-ghost save-btn" to={`/admin/jobs/${job.id}/edit`}>
+                Edit
+              </Link>
+              {confirmDelete ? (
+                <>
+                  <button className="btn-danger save-btn" type="button" onClick={deleteJob} disabled={pending}>
+                    {pending ? "…" : "Yes, delete"}
+                  </button>
+                  <button className="btn-ghost save-btn" type="button" onClick={() => setConfirmDelete(false)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button className="btn-danger save-btn" type="button" onClick={() => setConfirmDelete(true)} disabled={pending}>
+                  Delete
+                </button>
+              )}
+            </>
+          ) : (
+            <button className="btn-ghost save-btn" type="button" onClick={toggleSave} disabled={pending} aria-pressed={saved}>
+              {pending ? "…" : saved ? "Saved" : "Save"}
+            </button>
+          )}
         </div>
       </header>
       <div className="alert-body">
         <p><strong>Company:</strong> {job.companyName}</p>
-        <p><strong>Role:</strong> <Link className="alert-role" to={`/jobs/${job.id}`}>{job.title}</Link></p>
+        <p>
+          <strong>Role:</strong>{" "}
+          {mode === "admin" ? (
+            <span className="alert-role">{job.title}</span>
+          ) : (
+            <Link className="alert-role" to={`/jobs/${job.id}`}>{job.title}</Link>
+          )}
+        </p>
         {job.batchLabel && <p><strong>Batch:</strong> {job.batchLabel}</p>}
         <p><strong>{payKey}:</strong> {job.payLabel}</p>
         <p><strong>Location:</strong> {job.locationLabel}</p>

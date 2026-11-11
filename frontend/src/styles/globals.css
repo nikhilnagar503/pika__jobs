@@ -83,6 +83,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .btn-danger:hover { background: #fecaca; }
+.save-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .btn[disabled], .btn-primary[disabled], .btn-danger[disabled], .btn-ghost[disabled] {
   opacity: 0.55;
   cursor: not-allowed;

@@ -19,7 +19,10 @@ export function AdminOverviewPage() {
           <p className="eyebrow">Workspace</p>
           <h1>Overview</h1>
         </div>
-        <Link className="btn-primary" to="/admin/jobs/new">Post a job</Link>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link className="btn-ghost" to="/admin/feed">Admin feed</Link>
+          <Link className="btn-primary" to="/admin/jobs/new">Post a job</Link>
+        </div>
       </header>
       {error && <p className="error">{error}</p>}
       <div className="admin-stat-grid">

@@ -223,6 +223,39 @@ adminRouter.post(
   }),
 );
 
+adminRouter.get(
+  "/jobs/:id",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    res.json({ job: req.store.getAdminJob(actor, req.params.id) });
+  }, { persist: false }),
+);
+
+adminRouter.put(
+  "/jobs/:id",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    const existing = req.store.getAdminJob(actor, req.params.id);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const publish = body.publish === true;
+    const input = {
+      ...body,
+      jobId: req.params.id,
+      expectedVersion: typeof body.expectedVersion === "number" ? body.expectedVersion : existing.version,
+      sourceId: typeof body.sourceId === "string" && body.sourceId ? body.sourceId : existing.sourceId,
+      companyName: body.companyName ?? body.company ?? existing.companyName,
+      sourceUrl: body.sourceUrl ?? existing.sourceUrl,
+      evidenceExcerpt:
+        body.evidenceExcerpt ??
+        existing.evidence[0]?.excerpt ??
+        existing.summary,
+    } as JobInput;
+    const saved = req.store.saveJob(actor, input);
+    const published = publish && saved.lifecycle !== "published" ? req.store.publishJob(actor, saved.jobId) : saved;
+    res.json({ jobId: published.jobId, lifecycle: published.lifecycle, version: published.version, publish });
+  }),
+);
+
 adminRouter.post(
   "/jobs/:id/publish",
   asyncHandler(async (req, res) => {
