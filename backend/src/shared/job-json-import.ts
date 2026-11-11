@@ -137,6 +137,7 @@ function parseApply(raw: Record<string, unknown>, title: string): {
   sourceUrl: string;
   emailSubject: string;
   applyNote: string | null;
+  hasContactRoute: boolean;
 } {
   const applyObject = raw.apply && typeof raw.apply === "object" && !Array.isArray(raw.apply)
     ? (raw.apply as Record<string, unknown>)
@@ -158,7 +159,24 @@ function parseApply(raw: Record<string, unknown>, title: string): {
     raw.email,
     raw.apply_email,
   );
-  const note = firstString(applyObject?.note, raw.apply_note, raw.application_note) || null;
+  const phone = firstString(applyObject?.phone, raw.phone, raw.contact_phone, raw.mobile);
+  const contactName = firstString(applyObject?.contact_name, raw.contact_name, raw.recruiter);
+  const walkIn =
+    raw.walk_in && typeof raw.walk_in === "object" && !Array.isArray(raw.walk_in)
+      ? (raw.walk_in as Record<string, unknown>)
+      : null;
+  const walkInBits = [
+    firstString(walkIn?.venue) ? `Venue: ${firstString(walkIn?.venue)}` : "",
+    firstString(walkIn?.date) ? `Date: ${firstString(walkIn?.date)}` : "",
+    firstString(walkIn?.time) ? `Time: ${firstString(walkIn?.time)}` : "",
+  ].filter(Boolean);
+  const noteParts = [
+    firstString(applyObject?.note, raw.apply_note, raw.application_note),
+    contactName ? `Contact: ${contactName}` : "",
+    phone ? `Phone: ${phone}` : "",
+    ...walkInBits,
+  ].filter(Boolean);
+  const note = noteParts.length ? noteParts.join(" · ") : null;
   const subject =
     firstString(applyObject?.subject, raw.email_subject, raw.apply_subject) || `${title} application`;
 
@@ -175,17 +193,7 @@ function parseApply(raw: Record<string, unknown>, title: string): {
     hrEmail = fromMailto || (looksLikeEmail(emailRaw) ? emailRaw : hrEmail);
   }
 
-  if (!applicationUrl && !hrEmail) {
-    return {
-      applicationMethod: "url",
-      applicationUrl: null,
-      hrEmail: null,
-      hrEmailApproved: false,
-      sourceUrl: "https://pikajobs.com",
-      emailSubject: subject,
-      applyNote: note,
-    };
-  }
+  const hasContactRoute = Boolean(applicationUrl || hrEmail || phone || walkInBits.length);
 
   if (applicationUrl && hrEmail) {
     return {
@@ -196,6 +204,7 @@ function parseApply(raw: Record<string, unknown>, title: string): {
       sourceUrl: applicationUrl,
       emailSubject: subject,
       applyNote: note,
+      hasContactRoute,
     };
   }
 
@@ -208,6 +217,7 @@ function parseApply(raw: Record<string, unknown>, title: string): {
       sourceUrl: "https://pikajobs.com",
       emailSubject: subject,
       applyNote: note,
+      hasContactRoute,
     };
   }
 
@@ -219,6 +229,7 @@ function parseApply(raw: Record<string, unknown>, title: string): {
     sourceUrl: applicationUrl || "https://pikajobs.com",
     emailSubject: subject,
     applyNote: note,
+    hasContactRoute,
   };
 }
 
@@ -254,8 +265,8 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
   }
 
   const apply = parseApply(raw, title);
-  if (!apply.applicationUrl && !apply.hrEmail) {
-    return { skipped: true, key, reason: "Missing application link or email." };
+  if (!apply.hasContactRoute) {
+    return { skipped: true, key, reason: "Missing application link, email, phone, or walk-in details." };
   }
 
   const opportunityKind = mapOpportunityKind(
@@ -314,15 +325,36 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
   );
   const deadlineAt = parsePostedAt(firstString(raw.deadline_at, raw.deadline, raw.apply_by));
 
+  const openings = firstString(raw.openings, raw.number_of_openings);
+  const minCgpa = firstString(raw.min_cgpa, raw.cgpa, raw.cgpa_cutoff);
+  const joining = firstString(raw.joining_date, raw.joining, raw.start_date);
+  const bond = firstString(raw.bond);
+  const ppo = firstString(raw.ppo);
+  const employment = firstString(raw.employment, raw.employment_type);
+  const relocation = firstString(raw.relocation);
+  const companyWebsite = firstString(raw.company_website, raw.website);
+  const tags = asStringArray(raw.tags);
+  const interviewRounds = asStringArray(raw.interview_rounds);
+
   const builtEligibility = [
     ...eligibility,
     ...(batches.length ? [`Eligible batches: ${batches.join("/")}`] : []),
     ...(institutions ? [institutions] : []),
     ...(experience ? [experience] : []),
+    ...(minCgpa ? [`Min CGPA: ${minCgpa}`] : []),
+    ...(openings ? [`Openings: ${openings}`] : []),
+    ...(joining ? [`Joining: ${joining}`] : []),
+    ...(bond ? [`Bond: ${bond}`] : []),
+    ...(ppo ? [`PPO: ${ppo}`] : []),
+    ...(employment ? [`Employment: ${employment}`] : []),
+    ...(relocation ? [`Relocation: ${relocation}`] : []),
+    ...(interviewRounds.length ? [`Interview: ${interviewRounds.join(" → ")}`] : []),
+    ...(tags.length ? [`Tags: ${tags.join(", ")}`] : []),
+    ...(companyWebsite ? [`Company site: ${companyWebsite}`] : []),
   ]
     .map((item) => cleanAlertNoise(item))
     .filter(Boolean)
-    .slice(0, 6);
+    .slice(0, 8);
 
   const builtRequirements = (requirements.length ? requirements : skills.map((skill) => `Skill: ${skill}`))
     .map((item) => cleanAlertNoise(item))

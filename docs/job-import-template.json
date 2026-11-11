@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "generated_date": "",
+  "category": "",
+  "jobs": [
+    {
+      "id": "",
+      "title": "",
+      "company": "",
+      "company_website": "",
+      "summary": "",
+      "type": "",
+      "employment": "",
+      "sector": "",
+      "work_mode": "",
+      "role_family": "",
+      "location": "",
+      "country": "IN",
+      "relocation": "",
+      "batches": [],
+      "duration": "",
+      "experience": "",
+      "institutions": "",
+      "min_cgpa": "",
+      "openings": "",
+      "joining_date": "",
+      "bond": "",
+      "ppo": "",
+      "skills": [],
+      "eligibility": [],
+      "requirements": [],
+      "responsibilities": [],
+      "interview_rounds": [],
+      "tags": [],
+      "pay": {
+        "label": "",
+        "type": "",
+        "currency": "INR",
+        "period": ""
+      },
+      "apply": {
+        "url": "",
+        "email": "",
+        "phone": "",
+        "subject": "",
+        "note": "",
+        "contact_name": ""
+      },
+      "walk_in": {
+        "venue": "",
+        "date": "",
+        "time": ""
+      },
+      "source": "",
+      "source_url": "",
+      "posted_at": "",
+      "deadline_at": "",
+      "access": "free"
+    }
+  ]
+}

@@ -595,7 +595,7 @@ export class MemoryStore {
       eligibleCountries: input.eligibleCountries ?? [],
       skills: (input.skills ?? []).slice(0, 8),
       requirements: (input.requirements ?? []).map((item) => plainText(item, 220)).slice(0, 8),
-      eligibility: (input.eligibility ?? []).map((item) => plainText(item, 220)).slice(0, 6),
+      eligibility: (input.eligibility ?? []).map((item) => plainText(item, 220)).slice(0, 8),
       responsibilities: (input.responsibilities ?? []).map((item) => plainText(item, 220)).slice(0, 8),
       batchLabel: input.batchLabel ? plainText(input.batchLabel, 80) : null,
       durationLabel: input.durationLabel ? plainText(input.durationLabel, 80) : null,
@@ -666,8 +666,8 @@ export class MemoryStore {
       throw new AppError(422, "source_not_permitted", "Publish only from an enabled source with a recorded permission basis.");
     }
     if (!job.evidence.length) throw new AppError(422, "evidence_required", "Add source evidence before publishing.");
-    if ((job.applicationMethod === "url" || job.applicationMethod === "both") && !job.applicationUrl) {
-      throw new AppError(422, "application_required", "Add an application link.");
+    if ((job.applicationMethod === "url" || job.applicationMethod === "both") && !job.applicationUrl && !job.applyNote) {
+      throw new AppError(422, "application_required", "Add an application link or contact/walk-in note.");
     }
     if ((job.applicationMethod === "email" || job.applicationMethod === "both") && (!job.hrEmail || !job.hrEmailApproved)) {
       throw new AppError(422, "email_not_approved", "HR email can be published only with explicit approval.");
@@ -1438,7 +1438,7 @@ function toCard(job: JobRecord, reasons: string[], saved = false): JobCard {
     sector: job.sector,
     skills: job.skills.slice(0, 4),
     requirements: (job.requirements ?? []).slice(0, 8),
-    eligibility: (job.eligibility ?? []).slice(0, 6),
+    eligibility: (job.eligibility ?? []).slice(0, 8),
     responsibilities: (job.responsibilities ?? []).slice(0, 8),
     batchLabel: job.batchLabel ?? null,
     durationLabel: job.durationLabel ?? null,

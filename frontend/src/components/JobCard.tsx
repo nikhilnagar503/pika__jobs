@@ -85,7 +85,7 @@ export function JobCard({ job }: { job: JobCardData }) {
             <ul>{job.responsibilities.map((item) => <li key={item}>{item}</li>)}</ul>
           </section>
         )}
-        {(job.applicationUrl || mailto) && (
+        {(job.applicationUrl || mailto || job.applyNote) && (
           <section className="alert-apply">
             {job.applicationUrl && (
               <p>
@@ -96,11 +96,14 @@ export function JobCard({ job }: { job: JobCardData }) {
             {mailto && job.hrEmail && (
               <>
                 <p>
-                  <strong>Apply -</strong> {job.applyNote ? `${job.applyNote} ` : "Email "}
+                  <strong>Apply -</strong>{" "}
                   <a className="alert-link" href={mailto}>{job.hrEmail}</a>
                 </p>
                 {job.emailSubject && <p><strong>Subject:</strong> {job.emailSubject}</p>}
               </>
+            )}
+            {job.applyNote && (
+              <p><strong>Apply note -</strong> {job.applyNote}</p>
             )}
           </section>
         )}
