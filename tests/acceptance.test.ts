@@ -91,6 +91,19 @@ describe("visibility and archive", () => {
     expect(db.db.jobsCurrent).toHaveLength(0);
   });
 
+  it("allows a fresh import after an archived listing with the same external id", () => {
+    const db = store();
+    const { actor } = admin(db);
+    const src = source(db, actor);
+    const created = db.saveJob(actor, input(src.id, { externalJobId: "SWE-2026-001", sourceUrl: "https://careers.example.com/swe-1" }), now);
+    db.publishJob(actor, created.jobId, now);
+    db.deleteJob(actor, created.jobId, now);
+    expect(db.db.jobsCurrent).toHaveLength(0);
+    const again = db.saveJob(actor, input(src.id, { externalJobId: "SWE-2026-001", sourceUrl: "https://careers.example.com/swe-1" }), now);
+    expect(again.jobId).not.toBe(created.jobId);
+    expect(again.lifecycle).toBe("draft");
+  });
+
   it("keeps the original effective date when the same source is imported again", () => {
     const db = store();
     const { actor } = admin(db);

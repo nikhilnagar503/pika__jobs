@@ -547,9 +547,15 @@ export class MemoryStore {
     if (payError) throw new AppError(422, "invalid_pay", payError);
     if (input.applicationUrl) assertPublicHttpUrl(input.applicationUrl, "applicationUrl");
     if (input.sourceUrl) assertPublicHttpUrl(input.sourceUrl, "sourceUrl");
-    const existing = input.jobId ? this.findAny(input.jobId) : this.findBySource(input.sourceId, input.externalJobId ?? null, input.sourceUrl);
+    let existing = input.jobId
+      ? this.findAny(input.jobId)
+      : this.findBySource(input.sourceId, input.externalJobId ?? null, input.sourceUrl);
+    // Deleted/expired archive rows must not block a fresh import of the same external id.
     if (existing && (existing.lifecycle === "archived" || existing.lifecycle === "removed")) {
-      throw new AppError(409, "archived", "Archived listings stay archived. A new posting needs a new identity.");
+      if (input.jobId) {
+        throw new AppError(409, "archived", "Archived listings stay archived. A new posting needs a new identity.");
+      }
+      existing = undefined;
     }
     if (existing && input.expectedVersion == null) {
       throw new AppError(409, "version_required", "Send the listing version you edited.");
@@ -1364,13 +1370,23 @@ export class MemoryStore {
   }
 
   private findBySource(sourceId: string, externalJobId: string | null, sourceUrl: string): JobRecord | undefined {
-    const jobs = [...this.db.jobsCurrent, ...this.db.drafts, ...this.db.jobsArchive];
+    // Prefer live/draft matches. Archive is only a fallback and is ignored by saveJob for fresh imports.
+    const live = [...this.db.jobsCurrent, ...this.db.drafts];
+    const all = [...live, ...this.db.jobsArchive];
     if (externalJobId) {
-      const byExternal = jobs.find((job) => job.sourceId === sourceId && job.externalJobId === externalJobId);
+      const byExternalLive = live.find((job) => job.sourceId === sourceId && job.externalJobId === externalJobId);
+      if (byExternalLive) return byExternalLive;
+      const byExternal = all.find((job) => job.sourceId === sourceId && job.externalJobId === externalJobId);
       if (byExternal) return byExternal;
     }
     const normalized = sourceUrl.trim().replace(/\/$/, "").toLowerCase();
-    return jobs.find((job) => job.sourceId === sourceId && job.sourceUrl.trim().replace(/\/$/, "").toLowerCase() === normalized);
+    const byUrlLive = live.find(
+      (job) => job.sourceId === sourceId && job.sourceUrl.trim().replace(/\/$/, "").toLowerCase() === normalized,
+    );
+    if (byUrlLive) return byUrlLive;
+    return all.find(
+      (job) => job.sourceId === sourceId && job.sourceUrl.trim().replace(/\/$/, "").toLowerCase() === normalized,
+    );
   }
 
   findLiveCompanyTitleDuplicate(companyName: string, title: string, excludeJobId?: string): JobRecord | null {
