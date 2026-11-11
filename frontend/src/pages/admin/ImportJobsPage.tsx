@@ -1,6 +1,34 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+
+type ImportDraft = {
+  importKey: string;
+  title: string;
+  companyName: string;
+  summary: string;
+  opportunityKind: string;
+  locationLabel: string;
+  payDisplayLabel: string | null;
+  applicationUrl: string | null;
+  hrEmail: string | null;
+  batchLabel: string | null;
+  durationLabel: string | null;
+  skills: string[];
+  eligibility: string[];
+  requirements: string[];
+  [key: string]: unknown;
+};
+
+type PreviewResult = {
+  format: string;
+  category: string | null;
+  generatedDate: string | null;
+  draftCount: number;
+  skippedCount: number;
+  drafts: ImportDraft[];
+  skipped: Array<{ key: string; reason: string }>;
+};
 
 type ImportResult = {
   format: string;
@@ -19,56 +47,73 @@ export function AdminImportJobsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
-  const [previewCount, setPreviewCount] = useState<number | null>(null);
-  const [payload, setPayload] = useState<unknown>(null);
+  const [publish, setPublish] = useState(true);
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
+  const [drafts, setDrafts] = useState<ImportDraft[]>([]);
   const [result, setResult] = useState<ImportResult | null>(null);
 
   async function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     setError("");
     setResult(null);
-    setPreviewCount(null);
-    setPayload(null);
+    setPreview(null);
+    setDrafts([]);
     const file = event.target.files?.[0];
     if (!file) {
       setFileName("");
       return;
     }
     setFileName(file.name);
+    setLoading(true);
     try {
       const text = await file.text();
-      const json = JSON.parse(text) as Record<string, unknown>;
-      const count =
-        (Array.isArray(json.jobs) ? json.jobs.length : 0) +
-        (Array.isArray(json.telegram_jobs) ? json.telegram_jobs.length : 0) +
-        (Array.isArray(json.scraped_jobs) ? json.scraped_jobs.length : 0);
-      if (!count) {
-        throw new Error("No jobs array found. Use files with jobs, telegram_jobs, or scraped_jobs.");
+      const payload = JSON.parse(text) as unknown;
+      const body = await api<PreviewResult>("/api/v1/admin/jobs/import/preview", {
+        method: "POST",
+        body: JSON.stringify({ payload }),
+      });
+      setPreview(body);
+      setDrafts(body.drafts);
+      if (!body.drafts.length) {
+        setError("No importable jobs found in this file.");
       }
-      setPayload(json);
-      setPreviewCount(count);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read JSON file.");
       setFileName("");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!payload) {
-      setError("Choose a JSON file first.");
+  function updateDraft(index: number, patch: Partial<ImportDraft>) {
+    setDrafts((current) => current.map((draft, i) => (i === index ? { ...draft, ...patch } : draft)));
+  }
+
+  function removeDraft(index: number) {
+    setDrafts((current) => current.filter((_, i) => i !== index));
+  }
+
+  async function confirmImport() {
+    if (!drafts.length) {
+      setError("Keep at least one job in the preview.");
       return;
     }
     setLoading(true);
     setError("");
     setResult(null);
-    const form = new FormData(event.currentTarget);
-    const publish = form.get("publish") === "yes";
     try {
       const body = await api<ImportResult>("/api/v1/admin/jobs/import", {
         method: "POST",
-        body: JSON.stringify({ payload, publish }),
+        body: JSON.stringify({
+          drafts,
+          publish,
+          format: preview?.format,
+          category: preview?.category,
+          generatedDate: preview?.generatedDate,
+        }),
       });
       setResult(body);
+      setDrafts([]);
+      setPreview(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.");
     } finally {
@@ -81,79 +126,150 @@ export function AdminImportJobsPage() {
       <header className="admin-header">
         <div>
           <h1>Import jobs JSON</h1>
-          <p className="muted">
-            Upload catalog files (`jobs`) or tracker files (`telegram_jobs` / `scraped_jobs`).
-          </p>
+          <p className="muted">Upload a file, review the preview, edit or remove rows, then post.</p>
         </div>
         <Link className="btn-ghost" to="/admin/jobs">Back</Link>
       </header>
 
       {error && <p className="error">{error}</p>}
 
-      <form className="admin-form" onSubmit={onSubmit}>
-        <section className="admin-panel">
-          <label className="field">
-            JSON file
-            <input type="file" accept="application/json,.json" onChange={onFileChange} />
-          </label>
-          {fileName && (
-            <p className="meta">
-              Selected: {fileName}
-              {previewCount != null ? ` · ${previewCount} listings detected` : ""}
-            </p>
-          )}
-          <label className="checks">
-            <input type="checkbox" name="publish" value="yes" defaultChecked />
-            Publish imported listings to the feed immediately
-          </label>
-          <p className="muted">
-            Every row with a title, company, and apply link is mapped into a Pikajobs listing.
-          </p>
-          <button className="btn-primary" type="submit" disabled={loading || !payload}>
-            {loading ? "Importing…" : "Import jobs"}
+      <section className="admin-panel">
+        <label className="field">
+          JSON file
+          <input type="file" accept="application/json,.json" onChange={onFileChange} disabled={loading} />
+        </label>
+        {fileName && <p className="meta">Selected: {fileName}</p>}
+        <label className="checks">
+          <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} />
+          Publish listings to the feed immediately
+        </label>
+      </section>
+
+      {preview && drafts.length > 0 && (
+        <section className="admin-panel" style={{ marginTop: 24 }}>
+          <div className="admin-header" style={{ marginBottom: 12 }}>
+            <div>
+              <h2>Preview · {drafts.length} jobs</h2>
+              <p className="meta">
+                Format: {preview.format}
+                {preview.category ? ` · ${preview.category}` : ""}
+                {preview.generatedDate ? ` · ${preview.generatedDate}` : ""}
+                {preview.skippedCount ? ` · ${preview.skippedCount} rows not mapped` : ""}
+              </p>
+            </div>
+            <button className="btn-primary" type="button" onClick={confirmImport} disabled={loading}>
+              {loading ? "Posting…" : `Post ${drafts.length} jobs`}
+            </button>
+          </div>
+
+          <div className="import-preview-list">
+            {drafts.map((draft, index) => (
+              <article key={draft.importKey} className="import-preview-card">
+                <div className="import-preview-top">
+                  <span className="meta">{draft.opportunityKind}</span>
+                  <button className="btn-ghost" type="button" onClick={() => removeDraft(index)}>
+                    Remove
+                  </button>
+                </div>
+                <label className="field">
+                  Role
+                  <input
+                    value={draft.title}
+                    onChange={(e) => updateDraft(index, { title: e.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  Company
+                  <input
+                    value={draft.companyName}
+                    onChange={(e) => updateDraft(index, { companyName: e.target.value })}
+                  />
+                </label>
+                <div className="import-preview-grid">
+                  <label className="field">
+                    Type
+                    <select
+                      value={draft.opportunityKind}
+                      onChange={(e) => updateDraft(index, { opportunityKind: e.target.value })}
+                    >
+                      <option value="job">Job</option>
+                      <option value="internship">Internship</option>
+                      <option value="apprenticeship">Apprenticeship</option>
+                      <option value="freelance">Freelance</option>
+                      <option value="fellowship">Fellowship</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    Pay / stipend
+                    <input
+                      value={draft.payDisplayLabel ?? ""}
+                      onChange={(e) => updateDraft(index, { payDisplayLabel: e.target.value || null })}
+                    />
+                  </label>
+                  <label className="field">
+                    Location
+                    <input
+                      value={draft.locationLabel}
+                      onChange={(e) => updateDraft(index, { locationLabel: e.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    Batch
+                    <input
+                      value={draft.batchLabel ?? ""}
+                      onChange={(e) => updateDraft(index, { batchLabel: e.target.value || null })}
+                    />
+                  </label>
+                </div>
+                <label className="field">
+                  Apply URL
+                  <input
+                    value={draft.applicationUrl ?? ""}
+                    onChange={(e) => updateDraft(index, { applicationUrl: e.target.value || null })}
+                  />
+                </label>
+                <label className="field">
+                  HR email
+                  <input
+                    value={draft.hrEmail ?? ""}
+                    onChange={(e) => updateDraft(index, { hrEmail: e.target.value || null })}
+                  />
+                </label>
+                <label className="field">
+                  Summary
+                  <textarea
+                    rows={2}
+                    value={draft.summary}
+                    onChange={(e) => updateDraft(index, { summary: e.target.value })}
+                  />
+                </label>
+              </article>
+            ))}
+          </div>
+
+          <button className="btn-primary" type="button" onClick={confirmImport} disabled={loading} style={{ marginTop: 16 }}>
+            {loading ? "Posting…" : `Post ${drafts.length} jobs`}
           </button>
         </section>
-      </form>
+      )}
 
       {result && (
         <section className="admin-panel" style={{ marginTop: 24 }}>
           <h2>Import result</h2>
-          <p className="meta">
-            Format: {result.format}
-            {result.category ? ` · ${result.category}` : ""}
-            {result.generatedDate ? ` · ${result.generatedDate}` : ""}
-          </p>
           <p>
             Created <strong>{result.createdCount}</strong>
-            {" · "}
-            Skipped <strong>{result.skippedCount}</strong>
             {" · "}
             Failed <strong>{result.failedCount}</strong>
             {result.publish ? " · published" : " · saved as drafts"}
           </p>
           {result.failed.length > 0 && (
-            <div>
-              <h3>Failed</h3>
-              <ul>
-                {result.failed.slice(0, 20).map((item) => (
-                  <li key={item.importKey}>
-                    {item.importKey}: {item.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {result.skipped.length > 0 && (
-            <div>
-              <h3>Skipped</h3>
-              <ul>
-                {result.skipped.slice(0, 20).map((item) => (
-                  <li key={`${item.key}-${item.reason}`}>
-                    {item.key}: {item.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ul>
+              {result.failed.slice(0, 20).map((item) => (
+                <li key={item.importKey}>
+                  {item.importKey}: {item.message}
+                </li>
+              ))}
+            </ul>
           )}
           <p className="muted">
             <Link to="/admin/jobs">Review jobs</Link>

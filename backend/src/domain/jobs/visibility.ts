@@ -44,7 +44,7 @@ export function resolveEffectiveJobAt(input: {
 
 export function publicationBlockReason(effectiveJobAt: Date, visibleUntil: Date, now: Date): string | null {
   if (!isVisibleAt(visibleUntil, now)) {
-    return "This listing is already outside the 30 day visibility window and cannot be published as a fresh job.";
+    return "This listing is already outside the 14 day visibility window and cannot be published as a fresh job.";
   }
   if (effectiveJobAt.getTime() > now.getTime() + 60_000) {
     return "The effective date is in the future and needs review.";

@@ -31,7 +31,7 @@ export function SavedPage() {
 
 export function ActivityPage() {
   const { user, ready } = useAuth();
-  const [items, setItems] = useState<Array<{ id: string; kind: string; occurredAt: string; jobId: string }>>([]);
+  const [items, setItems] = useState<Array<{ id: string; kind: string; occurredAt: string; jobId: string; title?: string }>>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -47,11 +47,19 @@ export function ActivityPage() {
   return (
     <>
       <h1>Activity</h1>
+      <p className="muted">
+        This is your personal history: when you open an apply link or mark a role as applied. Saved jobs stay under Saved.
+      </p>
       {error && <p className="error">{error}</p>}
-      {items.length === 0 && <p className="muted">No activity yet.</p>}
-      <ul>
+      {items.length === 0 && <p className="muted">No apply activity yet. Open an apply link from a listing to see it here.</p>}
+      <ul className="activity-list">
         {items.map((item) => (
-          <li key={item.id} className="meta">{item.kind} · {item.jobId} · {new Date(item.occurredAt).toLocaleString("en-IN")}</li>
+          <li key={item.id}>
+            <strong>{item.kind === "applied" ? "Marked applied" : "Opened apply"}</strong>
+            {" · "}
+            {item.title || item.jobId}
+            <span className="meta"> · {new Date(item.occurredAt).toLocaleString("en-IN")}</span>
+          </li>
         ))}
       </ul>
     </>
@@ -67,11 +75,3 @@ export function PricingPage() {
   );
 }
 
-export function OnboardingPage() {
-  return (
-    <>
-      <h1>Improve your feed</h1>
-      <p className="muted">Preferences UI will grow here. For now, use feed filters.</p>
-    </>
-  );
-}

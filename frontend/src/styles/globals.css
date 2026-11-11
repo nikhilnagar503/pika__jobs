@@ -126,16 +126,43 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 8px 12px; background: var(--surface);
 }
 .feed-clear { color: var(--muted); text-decoration: none; font-size: 14px; white-space: nowrap; }
-.feed-filters {
-  display: flex; flex-wrap: wrap; gap: 10px;
-}
-.feed-filters a {
-  display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px;
-  border: 1px solid var(--border); border-radius: 999px; background: var(--surface);
-  text-decoration: none; font-size: 14px; font-weight: 550;
-}
-.feed-filters a:hover { border-color: #c7d2fe; color: var(--primary); }
 .feed-count { margin: 0; color: var(--muted); font-size: 14px; }
+.activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.activity-list li {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.import-preview-list {
+  display: grid;
+  gap: 16px;
+}
+.import-preview-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+}
+.import-preview-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.import-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
 
 .alert-card {
   gap: 8px;
@@ -147,12 +174,22 @@ button, input, select, textarea { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 10px;
 }
-.alert-title {
+.alert-head-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.alert-kind {
   margin: 0;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
+  text-transform: capitalize;
   letter-spacing: -0.01em;
-  line-height: 1.35;
+}
+.alert-time {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 .alert-head-actions {
   display: flex;
@@ -353,7 +390,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   }
   .feed-search { grid-template-columns: 1fr; }
   .feed-search .btn-ghost, .feed-clear { width: 100%; justify-content: center; text-align: center; }
-  .feed-filters a { flex: 1 1 calc(50% - 10px); justify-content: center; }
+  .import-preview-grid { grid-template-columns: 1fr; }
   .alert-card { padding: 12px 14px; }
   .alert-head { align-items: center; }
   .feed { gap: 12px; }

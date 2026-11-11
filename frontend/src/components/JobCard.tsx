@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/time";
 
 export type JobCardData = {
   id: string;
@@ -21,12 +22,15 @@ export type JobCardData = {
   emailSubject: string | null;
   accessTier: "free" | "pro";
   saved: boolean;
+  effectiveJobAt?: string;
+  sourcePublishedAt?: string | null;
 };
 
 export function JobCard({ job }: { job: JobCardData }) {
   const [saved, setSaved] = useState(job.saved);
   const [pending, setPending] = useState(false);
   const payKey = job.opportunityKind === "internship" ? "Stipend" : "CTC";
+  const postedAt = job.sourcePublishedAt || job.effectiveJobAt;
   const mailto = job.hrEmail
     ? `mailto:${job.hrEmail}${job.emailSubject ? `?subject=${encodeURIComponent(job.emailSubject)}` : ""}`
     : null;
@@ -44,7 +48,10 @@ export function JobCard({ job }: { job: JobCardData }) {
   return (
     <article className="job alert-card">
       <header className="alert-head">
-        <p className="alert-title">🚨 Opportunity Alert 🚨</p>
+        <div className="alert-head-meta">
+          <p className="alert-kind">{job.opportunityKind.replaceAll("_", " ")}</p>
+          <p className="alert-time">{formatRelativeTime(postedAt)}</p>
+        </div>
         <div className="alert-head-actions">
           {job.accessTier === "pro" && <span className="flag">Pro</span>}
           <button className="btn-ghost save-btn" type="button" onClick={toggleSave} disabled={pending} aria-pressed={saved}>

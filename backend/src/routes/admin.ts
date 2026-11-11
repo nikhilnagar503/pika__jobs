@@ -45,13 +45,20 @@ adminRouter.post(
 );
 
 adminRouter.post(
-  "/jobs/import",
+  "/jobs/import/preview",
   asyncHandler(async (req, res) => {
-    const actor = requireAdmin(req);
-    const publish = req.body?.publish === true;
-    let parsed;
+    requireAdmin(req);
     try {
-      parsed = parseJobImportJson(req.body?.payload ?? req.body);
+      const parsed = parseJobImportJson(req.body?.payload ?? req.body);
+      res.json({
+        format: parsed.format,
+        category: parsed.category,
+        generatedDate: parsed.generatedDate,
+        draftCount: parsed.drafts.length,
+        skippedCount: parsed.skipped.length,
+        drafts: parsed.drafts,
+        skipped: parsed.skipped,
+      });
     } catch (error) {
       throw new AppError(
         422,
@@ -59,14 +66,58 @@ adminRouter.post(
         error instanceof Error ? error.message : "Could not parse job JSON.",
       );
     }
+  }, { persist: false }),
+);
+
+adminRouter.post(
+  "/jobs/import",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    const publish = req.body?.publish === true;
+    let drafts: Array<Record<string, unknown>> = [];
+    let meta = {
+      format: "edited",
+      category: null as string | null,
+      generatedDate: null as string | null,
+      skipped: [] as Array<{ key: string; reason: string }>,
+    };
+
+    if (Array.isArray(req.body?.drafts)) {
+      drafts = req.body.drafts as Array<Record<string, unknown>>;
+      meta.format = typeof req.body.format === "string" ? req.body.format : "edited";
+      meta.category = typeof req.body.category === "string" ? req.body.category : null;
+      meta.generatedDate = typeof req.body.generatedDate === "string" ? req.body.generatedDate : null;
+    } else {
+      try {
+        const parsed = parseJobImportJson(req.body?.payload ?? req.body);
+        drafts = parsed.drafts as unknown as Array<Record<string, unknown>>;
+        meta = {
+          format: parsed.format,
+          category: parsed.category,
+          generatedDate: parsed.generatedDate,
+          skipped: parsed.skipped,
+        };
+      } catch (error) {
+        throw new AppError(
+          422,
+          "invalid_import",
+          error instanceof Error ? error.message : "Could not parse job JSON.",
+        );
+      }
+    }
+
+    if (!drafts.length) {
+      throw new AppError(422, "invalid_import", "No jobs left to import. Keep at least one listing in the preview.");
+    }
 
     const source = req.store.ensureManualListingSource(actor);
     const created: Array<{ importKey: string; jobId: string; lifecycle: string }> = [];
     const failed: Array<{ importKey: string; message: string }> = [];
 
-    for (const draft of parsed.drafts) {
+    for (const draft of drafts) {
+      const importKey = typeof draft.importKey === "string" ? draft.importKey : crypto.randomUUID();
       try {
-        const { importKey, ...input } = draft;
+        const { importKey: _key, skipped: _skipped, skipReason: _reason, ...input } = draft;
         const saved = req.store.saveJob(actor, { ...input, sourceId: source.id } as JobInput);
         const published = publish ? req.store.publishJob(actor, saved.jobId) : saved;
         created.push({
@@ -76,22 +127,22 @@ adminRouter.post(
         });
       } catch (error) {
         failed.push({
-          importKey: draft.importKey,
+          importKey,
           message: error instanceof Error ? error.message : "Import failed.",
         });
       }
     }
 
     res.status(201).json({
-      format: parsed.format,
-      category: parsed.category,
-      generatedDate: parsed.generatedDate,
+      format: meta.format,
+      category: meta.category,
+      generatedDate: meta.generatedDate,
       publish,
       createdCount: created.length,
-      skippedCount: parsed.skipped.length,
+      skippedCount: meta.skipped.length,
       failedCount: failed.length,
       created,
-      skipped: parsed.skipped,
+      skipped: meta.skipped,
       failed,
     });
   }),

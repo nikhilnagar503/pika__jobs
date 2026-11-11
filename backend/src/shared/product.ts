@@ -10,7 +10,7 @@ export const product = {
   referralHoldDays: 30,
   attributionWindowDays: 30,
   payoutMinimumMinor: 50000,
-  visibilityWindowMs: 30 * 24 * 60 * 60 * 1000,
+  visibilityWindowMs: 14 * 24 * 60 * 60 * 1000,
   pageSize: 20,
   adInterval: 10,
   adminEmail: "nagarn603@gmail.com",

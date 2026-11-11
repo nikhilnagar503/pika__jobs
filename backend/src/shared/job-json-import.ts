@@ -18,6 +18,15 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function cleanAlertNoise(value: string): string {
+  return value
+    .replace(/🚨\s*Opportunity Alert\s*🚨/gi, "")
+    .replace(/Opportunity Alert/gi, "")
+    .replace(/🚨/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => String(item).trim()).filter(Boolean);
@@ -111,8 +120,8 @@ function durationFromJobType(jobType: string): string | null {
 }
 
 function draftFromCatalogJob(raw: Record<string, unknown>, index: number): ImportJobDraft | { skipped: true; key: string; reason: string } {
-  const title = asString(raw.job_title) || asString(raw.role) || asString(raw.title);
-  const company = asString(raw.company) || asString(raw.company_name);
+  const title = cleanAlertNoise(asString(raw.job_title) || asString(raw.role) || asString(raw.title));
+  const company = cleanAlertNoise(asString(raw.company) || asString(raw.company_name));
   const applyLink =
     asString(raw.direct_application_url) ||
     asString(raw.apply_link) ||
@@ -154,7 +163,7 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
     importKey: key,
     title,
     companyName: company,
-    summary: (summaryParts.join(" ") || `${title} at ${company}`).slice(0, 400),
+    summary: cleanAlertNoise(summaryParts.join(" ") || `${title} at ${company}`).slice(0, 400),
     opportunityKind,
     sector: "private",
     workMode: mapWorkMode(asString(raw.work_arrangement) || location),

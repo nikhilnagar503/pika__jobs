@@ -43,15 +43,14 @@ export function MemberShell() {
           <NavLink key={href} to={href}>{label}</NavLink>
         ))}
         {isAdmin && <NavLink to="/admin">Admin</NavLink>}
-        <Link to="/onboarding">Improve your feed</Link>
       </nav>
       <main id="main" className="feed">
         <Outlet />
       </main>
       <aside className="rail">
         <div className="panel">
-          <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>A quieter search</h2>
-          <p className="muted">Filters stay in the address bar. Preferences suggest a ranking.</p>
+          <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Fresh listings</h2>
+          <p className="muted">Feed shows the newest roles first. Only the last 14 days stay live.</p>
         </div>
       </aside>
       <nav className="bottom" aria-label="Mobile">

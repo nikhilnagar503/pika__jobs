@@ -21,7 +21,7 @@ jobsRouter.get(
     if (req.query.unknown === "0") filters.includeUnknownPay = false;
     const page = req.store.listFeed(req.actor, {
       filters,
-      sort: req.query.sort === "latest" ? "latest" : "for_you",
+      sort: req.query.sort === "for_you" ? "for_you" : "latest",
       cursor: typeof req.query.cursor === "string" ? req.query.cursor : null,
       preview: req.query.preview === "pro" ? "pro" : req.query.preview === "free" ? "free" : null,
     });

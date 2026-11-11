@@ -313,7 +313,7 @@ export class MemoryStore {
       filters.includeUnknownPay = this.prefs(actor.userId, now).showUnknownPay;
     }
     const cursor = input.cursor ? decodeCursor(input.cursor) : null;
-    const sort = cursor?.sort ?? input.sort ?? "for_you";
+    const sort = cursor?.sort ?? input.sort ?? "latest";
     const asOf = cursor ? new Date(cursor.asOf) : now;
     const preferences = actor.kind === "user" ? this.prefs(actor.userId, now) : null;
     const visible = this.db.jobsCurrent.filter(

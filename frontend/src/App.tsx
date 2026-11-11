@@ -10,7 +10,7 @@ import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { SignInPage, SignUpPage } from "@/pages/AuthPages";
 import { FeedPage } from "@/pages/FeedPage";
 import { HomePage } from "@/pages/HomePage";
-import { ActivityPage, OnboardingPage, PricingPage, SavedPage } from "@/pages/SavedActivityPages";
+import { ActivityPage, PricingPage, SavedPage } from "@/pages/SavedActivityPages";
 
 export function App() {
   return (
@@ -28,7 +28,6 @@ export function App() {
         <Route path="/saved" element={<SavedPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/account" element={<AccountPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
       </Route>
 
       <Route path="/admin" element={<AdminLayout />}>

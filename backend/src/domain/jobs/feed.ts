@@ -1,4 +1,4 @@
-import { labelOf, roleFamilies, workModes } from "@/shared/product";
+import { labelOf, product, roleFamilies, workModes } from "@/shared/product";
 import type { JobRecord, Preferences } from "@/domain/types";
 
 export type FeedFilters = {
@@ -30,7 +30,18 @@ export function emptyFilters(): FeedFilters {
 
 export function matchesFilters(job: JobRecord, filters: FeedFilters, asOf: Date): boolean {
   if (filters.q) {
-    const haystack = [job.title, job.companyName, job.summary, job.locationLabel, ...job.skills]
+    const haystack = [
+      job.title,
+      job.companyName,
+      job.summary,
+      job.locationLabel,
+      job.opportunityKind,
+      job.payDisplayLabel ?? "",
+      job.batchLabel ?? "",
+      job.durationLabel ?? "",
+      ...job.skills,
+      ...job.eligibility,
+    ]
       .join(" ")
       .toLowerCase();
     if (!haystack.includes(filters.q.toLowerCase())) return false;
@@ -124,7 +135,7 @@ export function scoreJob(
 
 export function freshnessPoints(effectiveJobAt: string, asOf: Date): number {
   const age = asOf.getTime() - new Date(effectiveJobAt).getTime();
-  const windowMs = 30 * 24 * 60 * 60 * 1000;
+  const windowMs = product.visibilityWindowMs;
   if (age <= 0) return 10;
   if (age >= windowMs) return 0;
   return Math.round((10 * (windowMs - age)) / windowMs);
