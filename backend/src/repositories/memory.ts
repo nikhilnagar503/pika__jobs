@@ -699,11 +699,18 @@ export class MemoryStore {
     this.requireRole(actor, ["admin", "reviewer"]);
     if (!reason.trim()) throw new AppError(422, "reason_required", "An archive reason is required.");
     const current = this.db.jobsCurrent.find((item) => item.jobId === jobId);
-    if (!current) throw new AppError(404, "not_available", "This listing is not in the current collection.");
-    current.lifecycle = reason === "safety_removal" ? "removed" : "archived";
-    current.visibleUntil = now.toISOString();
-    this.moveToArchive(current, reason, now);
+    const draft = this.db.drafts.find((item) => item.jobId === jobId);
+    const target = current ?? draft;
+    if (!target) throw new AppError(404, "not_available", "This listing is not available to remove.");
+    target.lifecycle = reason === "Deleted by admin" || reason === "safety_removal" ? "removed" : "archived";
+    target.visibleUntil = now.toISOString();
+    this.moveToArchive(target, reason, now);
     audit(this.db, this.actorId(actor), "archive_job", jobId, reason, now.toISOString());
+    return { jobId, lifecycle: target.lifecycle };
+  }
+
+  deleteJob(actor: Actor, jobId: string, now = new Date()) {
+    return this.archiveJob(actor, jobId, "Deleted by admin", now);
   }
 
   archiveDue(now = new Date(), batchSize = 500): { moved: number; skipped: string[] } {

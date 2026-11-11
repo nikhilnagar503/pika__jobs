@@ -214,6 +214,14 @@ adminRouter.post(
   }),
 );
 
+adminRouter.delete(
+  "/jobs/:id",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    res.json(req.store.deleteJob(actor, req.params.id));
+  }),
+);
+
 adminRouter.get(
   "/sources",
   asyncHandler(async (req, res) => {
