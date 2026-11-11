@@ -1,13 +1,30 @@
-import { createClient, type User } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import ws from "ws";
 import { env, supabaseConfigured } from "@/config/env";
 
-export function createSupabaseAdmin() {
+function createServerClient(apiKey: string): SupabaseClient {
+  return createClient(env.supabaseUrl, apiKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    // Node 20 on the VPS has no built-in WebSocket; Supabase realtime requires one.
+    realtime: { transport: ws as unknown as typeof WebSocket },
+  });
+}
+
+export function createSupabaseAdmin(): SupabaseClient | null {
   if (!supabaseConfigured()) return null;
   const key = env.supabaseServiceRoleKey || env.supabaseAnonKey;
   if (!key) return null;
-  return createClient(env.supabaseUrl, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  try {
+    return createServerClient(key);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        code: "supabase_admin_client_failed",
+        message: error instanceof Error ? error.message : "unknown",
+      }),
+    );
+    return null;
+  }
 }
 
 async function userFromAuthApi(token: string): Promise<User | null> {
@@ -28,14 +45,24 @@ async function userFromAuthApi(token: string): Promise<User | null> {
 export async function userFromAccessToken(token: string): Promise<User | null> {
   if (!supabaseConfigured() || !token) return null;
 
-  // Prefer secret/service key on the server (sb_secret_... or legacy service_role).
+  // Prefer plain HTTP on the server — avoids realtime/WebSocket entirely for auth.
+  try {
+    const user = await userFromAuthApi(token);
+    if (user) return user;
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        code: "supabase_get_user_http_failed",
+        message: error instanceof Error ? error.message : "unknown",
+      }),
+    );
+  }
+
   const apiKey = env.supabaseServiceRoleKey || env.supabaseAnonKey;
   if (!apiKey) return null;
 
   try {
-    const client = createClient(env.supabaseUrl, apiKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+    const client = createServerClient(apiKey);
     const { data, error } = await client.auth.getUser(token);
     if (!error && data.user?.id && data.user.email) return data.user;
   } catch (error) {
@@ -47,15 +74,5 @@ export async function userFromAccessToken(token: string): Promise<User | null> {
     );
   }
 
-  try {
-    return await userFromAuthApi(token);
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        code: "supabase_get_user_http_failed",
-        message: error instanceof Error ? error.message : "unknown",
-      }),
-    );
-    return null;
-  }
+  return null;
 }
