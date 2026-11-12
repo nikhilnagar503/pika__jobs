@@ -23,10 +23,22 @@ Pika_Jobs/
 3. SPA calls `API_URL/api/v1/...` with `Authorization: Bearer <access_token>`  
 4. Express verifies JWT, loads actor, serves feed/admin/save  
 
-## Live domain data
+## Where data lives
 
-Product data (jobs, users, saves) lives in the file/memory store (`repositories/store`, `db.ts`).  
-Not included for now: payments, referrals, payouts, ads.
+```text
+Browser
+  → Express API on Hostinger VPS   (hosting + business logic)
+  → Supabase Postgres              (product database)
+  → Supabase Auth                  (login)
+```
+
+| Store | What it holds |
+|---|---|
+| **Supabase Auth** | Login (`auth.users`) + `profiles`, `user_roles` |
+| **Supabase Postgres** | Jobs, members, saves, sources (`jobs`, `members`, `saved_jobs`, …) |
+| **VPS** | Node process only. `store.json` is a one-time import leftover, not the live DB |
+
+Set `PIKAJOBS_DATA_MODE=supabase` and `SUPABASE_SERVICE_ROLE_KEY` on the VPS. On first boot, if Postgres is empty, the API copies `store.json` into Postgres once.
 
 ## Local
 

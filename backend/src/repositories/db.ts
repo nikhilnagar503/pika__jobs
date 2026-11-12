@@ -55,8 +55,9 @@ export type BatchResult = {
 };
 
 /**
- * App database (file/memory).
- * Live product tables only — payments, ads, and referrals removed until needed.
+ * App database shape.
+ * Production source of truth is Supabase Postgres (see postgres-store.ts).
+ * Tests still use this object in memory.
  */
 export type Database = {
   users: UserAccount[];
