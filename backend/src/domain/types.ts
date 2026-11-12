@@ -89,28 +89,17 @@ export type UserAccount = {
   suspended: boolean;
   createdAt: string;
   deletedAt: string | null;
-  referralCode: string | null;
-  referralTermsAcceptedAt: string | null;
 };
 
 export type Actor =
   | { kind: "anonymous" }
-  | { kind: "user"; userId: string; email: string; roles: string[]; proUntil: string | null; suspended: boolean }
+  | { kind: "user"; userId: string; email: string; roles: string[]; suspended: boolean }
   | { kind: "agent"; credentialId: string; scopes: string[]; sourceIds: string[] }
   | { kind: "system" };
 
-export function isPro(actor: Actor, now: Date): boolean {
-  if (actor.kind !== "user" || !actor.proUntil) return false;
-  return new Date(actor.proUntil).getTime() > now.getTime();
-}
-
-export function canReadTier(actor: Actor, tier: AccessTier, now: Date, preview: "free" | "pro" | null): boolean {
+/** Signed-in members can read all published listings (Pro paywall removed for now). */
+export function canReadTier(actor: Actor, _tier: AccessTier, _now: Date, _preview: "free" | "pro" | null): boolean {
   if (actor.kind === "anonymous" || actor.kind === "agent") return false;
   if (actor.kind === "system") return true;
-  if (actor.suspended) return false;
-  if (preview && actor.roles.includes("admin")) {
-    return preview === "pro" ? true : tier === "free";
-  }
-  if (tier === "free") return true;
-  return isPro(actor, now);
+  return !actor.suspended;
 }

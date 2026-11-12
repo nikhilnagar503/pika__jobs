@@ -32,6 +32,6 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-## Ads / referrals
+## Scope note
 
-Ads insertion is paused in the backend. Homepage referral promo is not part of the SPA home for now.
+Payments, Pro paywall, referrals, payouts, and ads are **not in the live product** right now. The app is free member feed + admin job management. Those features can be added back later.

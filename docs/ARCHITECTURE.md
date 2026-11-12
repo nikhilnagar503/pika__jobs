@@ -23,6 +23,11 @@ Pika_Jobs/
 3. SPA calls `API_URL/api/v1/...` with `Authorization: Bearer <access_token>`  
 4. Express verifies JWT, loads actor, serves feed/admin/save  
 
+## Live domain data
+
+Product data (jobs, users, saves) lives in the file/memory store (`repositories/store`, `db.ts`).  
+Not included for now: payments, referrals, payouts, ads.
+
 ## Local
 
 - Frontend proxies `/api` → `http://localhost:4000` when `VITE_API_URL` is empty  

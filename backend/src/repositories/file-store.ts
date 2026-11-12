@@ -29,7 +29,6 @@ function readDatabase(): Database {
     const fresh = createDatabase();
     memoryDb = {
       ...fresh,
-      ...parsed,
       flags: { ...fresh.flags, ...(parsed.flags ?? {}) },
       demoSeedVersion: typeof parsed.demoSeedVersion === "string" ? parsed.demoSeedVersion : "",
       users: parsed.users ?? [],
@@ -44,16 +43,6 @@ function readDatabase(): Database {
       batches: parsed.batches ?? [],
       saved: parsed.saved ?? [],
       applications: parsed.applications ?? [],
-      reports: parsed.reports ?? [],
-      orders: parsed.orders ?? [],
-      entitlements: parsed.entitlements ?? [],
-      credits: parsed.credits ?? [],
-      payouts: parsed.payouts ?? [],
-      campaigns: parsed.campaigns ?? [],
-      events: parsed.events ?? [],
-      refundIds: parsed.refundIds ?? [],
-      attributions: parsed.attributions ?? [],
-      touches: parsed.touches ?? [],
       audit: parsed.audit ?? [],
       bootstrapConsumed: parsed.bootstrapConsumed ?? false,
     };
@@ -77,17 +66,13 @@ function writeDatabase(db: Database) {
   }
 }
 
-export function paymentsEnabled(): boolean {
-  return process.env.PIKAJOBS_PAYMENTS_ENABLED === "true" && Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
-}
-
 export async function withStore<T>(
   fn: (store: MemoryStore) => Promise<T> | T,
   options: { persist?: boolean } = {},
 ): Promise<T> {
   const persist = options.persist !== false;
   const run = queue.then(async () => {
-    const store = new MemoryStore(readDatabase(), { paymentsEnabled: paymentsEnabled() });
+    const store = new MemoryStore(readDatabase());
     const publishedBefore = store.db.jobsCurrent.some((job) => job.lifecycle === "published");
     const seedVersionBefore = store.db.demoSeedVersion;
     const usersBefore = store.db.users.length;

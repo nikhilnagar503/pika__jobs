@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { product } from "@/shared/product";
-import { insertSponsorSlots } from "@/domain/ads";
 import { formatPay } from "@/domain/jobs/pay";
 import { isVisibleAt } from "@/domain/jobs/visibility";
-import { checkoutSignature, commissionMinor, safeEqualHex, webhookSignature } from "@/domain/money";
 import { buildMailto, escapeCsvCell, isBlockedFetchTarget } from "@/domain/safety";
 import { AppError } from "@/http";
-import { balances } from "@/repositories/db";
 import { MemoryStore, type JobInput } from "@/repositories/memory";
 import type { Actor, JobRecord } from "@/domain/types";
 
@@ -14,7 +11,7 @@ const now = new Date("2026-11-10T08:00:00.000Z");
 const day = 24 * 60 * 60 * 1000;
 
 function store() {
-  return new MemoryStore(undefined, { paymentsEnabled: true });
+  return new MemoryStore();
 }
 
 function admin(store: MemoryStore) {
@@ -147,9 +144,6 @@ describe("pay, filters, and ranking", () => {
   it("does not treat unknown pay as zero and labels unpaid internships", () => {
     expect(formatPay({ compensationType: "not_disclosed", payMinMinor: null, payMaxMinor: null, payCurrency: null, payPeriod: null, payBasis: null })).toBe("Pay not disclosed");
     expect(formatPay({ compensationType: "unpaid", payMinMinor: 0, payMaxMinor: 0, payCurrency: "INR", payPeriod: "monthly", payBasis: "stipend", opportunityKind: "internship" })).toBe("Unpaid internship");
-    expect(commissionMinor(100000, 1000)).toBe(10000);
-    expect(commissionMinor(50000, 1000)).toBe(5000);
-    expect(commissionMinor(0, 1000)).toBe(0);
   });
 
   it("applies OR inside a facet and AND across facets", () => {
@@ -215,23 +209,22 @@ describe("pay, filters, and ranking", () => {
 });
 
 describe("access", () => {
-  it("blocks anonymous reads and keeps Pro fields off the free response", () => {
+  it("blocks anonymous reads and shows listings to signed-in members", () => {
     const db = store();
     const { actor } = admin(db);
     const freeUser = member(db, "free@example.com").actor;
     const src = source(db, actor);
-    const pro = db.saveJob(actor, input(src.id, { accessTier: "pro", title: "Hidden role", sourceUrl: "https://careers.example.com/pro", applicationUrl: "https://careers.example.com/pro" }), now);
-    db.publishJob(actor, pro.jobId, now);
+    const job = db.saveJob(actor, input(src.id, { title: "Open role", sourceUrl: "https://careers.example.com/open", applicationUrl: "https://careers.example.com/open" }), now);
+    db.publishJob(actor, job.jobId, now);
     expect(() => db.listFeed({ kind: "anonymous" }, { now })).toThrow(AppError);
     const feed = db.listFeed(freeUser, { sort: "latest", now });
-    expect(feed.items).toHaveLength(0);
-    const detail = db.getJob(freeUser, pro.jobId, now);
-    expect(detail.status).toBe("upgrade");
-    expect(JSON.stringify(detail)).not.toContain("Hidden role");
-    expect(JSON.stringify(detail)).not.toContain("careers.example.com");
-    const signedOut = db.getJob({ kind: "anonymous" }, pro.jobId, now);
+    expect(feed.items).toHaveLength(1);
+    expect(feed.items[0]?.job.title).toBe("Open role");
+    const detail = db.getJob(freeUser, job.jobId, now);
+    expect(detail.status).toBe("ok");
+    const signedOut = db.getJob({ kind: "anonymous" }, job.jobId, now);
     expect(signedOut.status).toBe("sign_in");
-    expect(JSON.stringify(signedOut)).not.toContain("Hidden");
+    expect(JSON.stringify(signedOut)).not.toContain("Open role");
   });
 
   it("does not let profile edits grant a role", () => {
@@ -300,134 +293,12 @@ describe("intake", () => {
   });
 });
 
-describe("money", () => {
-  it("grants one entitlement for two provider events and extends a second purchase", async () => {
-    const db = store();
-    db.setFlag(admin(db).actor, "payments_enabled", true, now);
-    const buyer = member(db, "buyer@example.com");
-    const referrer = member(db, "referrer@example.com");
-    const code = db.acceptReferralTerms(referrer.actor, now).code;
-    const attributed = member(db, "attributed@example.com");
-    db.db.users.find((user) => user.userId === attributed.user.userId);
-    db.db.attributions.push({ referredUserId: attributed.user.userId, referrerUserId: referrer.user.userId, code, linkedAt: now.toISOString() });
-    const order = await db.createOrder(db.actorFor(attributed.user.userId, now), { async createOrder() { return { id: "order_1" }; } }, now);
-    const signature = checkoutSignature(order.providerOrderId ?? "", "pay_1", "secret");
-    expect(safeEqualHex(signature, checkoutSignature("order_1", "pay_1", "secret"))).toBe(true);
-    const first = db.applyProviderEvent({ providerEventId: "evt_1", type: "payment.captured", providerOrderId: "order_1", providerPaymentId: "pay_1", amountMinor: 19900, currency: "INR", captured: true, signatureValid: true, now });
-    const second = db.applyProviderEvent({ providerEventId: "evt_2", type: "order.paid", providerOrderId: "order_1", providerPaymentId: "pay_1", amountMinor: 19900, currency: "INR", captured: true, signatureValid: true, now });
-    expect(first.granted).toBe(true);
-    expect(second.granted).toBe(false);
-    expect(db.db.entitlements).toHaveLength(1);
-    expect(db.db.credits).toHaveLength(1);
-    expect(db.db.credits[0]?.amountMinor).toBe(1990);
-    const again = await db.createOrder(db.actorFor(attributed.user.userId, now), { async createOrder() { return { id: "order_2" }; } }, new Date(now.getTime() + day));
-    db.applyProviderEvent({ providerEventId: "evt_3", type: "payment.captured", providerOrderId: again.providerOrderId ?? "", providerPaymentId: "pay_2", amountMinor: 19900, currency: "INR", captured: true, signatureValid: true, now: new Date(now.getTime() + day) });
-    expect(db.db.entitlements).toHaveLength(2);
-    expect(new Date(db.db.entitlements[1]!.startsAt).getTime()).toBe(new Date(db.db.entitlements[0]!.endsAt).getTime());
-    expect(() => db.applyProviderEvent({ providerEventId: "evt_4", type: "payment.authorized", providerOrderId: "missing", providerPaymentId: "pay_x", amountMinor: 19900, currency: "INR", captured: false, signatureValid: false, now })).toThrow(AppError);
-    void buyer;
-  });
-
-  it("reverses pending commission and carries a reversal after payout", () => {
-    const db = store();
-    const owner = admin(db);
-    db.setFlag(owner.actor, "payments_enabled", true, now);
-    const referrer = member(db, "ref2@example.com");
-    db.acceptReferralTerms(referrer.actor, now);
-    const buyer = member(db, "buy2@example.com");
-    db.db.attributions.push({ referredUserId: buyer.user.userId, referrerUserId: referrer.user.userId, code: "CODE", linkedAt: now.toISOString() });
-    const order = {
-      id: "ord",
-      userId: buyer.user.userId,
-      planId: "pro-pass-30",
-      productMinor: 1000000,
-      taxMinor: 18000,
-      currency: "INR",
-      days: 30,
-      commissionable: true,
-      rateBps: 1000,
-      referrerUserId: referrer.user.userId,
-      providerOrderId: "order_r",
-      state: "pending" as const,
-      createdAt: now.toISOString(),
-      refundedProductMinor: 0,
-    };
-    db.db.orders.push(order);
-    db.applyProviderEvent({ providerEventId: "e1", type: "payment.captured", providerOrderId: "order_r", providerPaymentId: "pay_r", amountMinor: 1018000, currency: "INR", captured: true, signatureValid: true, now });
-    expect(db.db.credits[0]?.amountMinor).toBe(100000);
-    db.applyRefund({ refundId: "rf_tax", providerPaymentId: "pay_r", productMinor: 0, taxMinor: 18000, now });
-    expect(db.db.credits[0]?.reversedMinor).toBe(0);
-    db.applyRefund({ refundId: "rf_half", providerPaymentId: "pay_r", productMinor: 500000, taxMinor: 0, now });
-    expect(db.db.credits[0]?.reversedMinor).toBe(50000);
-    const released = new Date(now.getTime() + 31 * day);
-    db.db.credits[0]!.availableAt = now.toISOString();
-    const payout = db.requestPayout(referrer.actor, { amountMinor: 50000, beneficiaryMasked: "****1234" }, released);
-    expect(payout.amountMinor).toBe(50000);
-    expect(() => db.requestPayout(referrer.actor, { amountMinor: 50000, beneficiaryMasked: "****1234" }, released)).toThrow(AppError);
-    db.settlePayout(owner.actor, { payoutId: payout.id, status: "paid", evidence: { reference: "UTR1", amountMinor: 50000, settledAt: released.toISOString() } }, released);
-    db.settlePayout(owner.actor, { payoutId: payout.id, status: "paid", evidence: { reference: "UTR1", amountMinor: 50000, settledAt: released.toISOString() } }, released);
-    expect(db.db.credits[0]?.paidMinor).toBe(50000);
-    db.applyRefund({ refundId: "rf_rest", providerPaymentId: "pay_r", productMinor: 500000, taxMinor: 18000, now: released });
-    const summary = balances(db.db.credits.filter((item) => item.referrerUserId === referrer.user.userId), released);
-    expect(summary.available).toBeLessThan(0);
-    expect(db.db.entitlements[0]?.state).toBe("revoked");
-  });
-
-  it("keeps the first referrer and ignores a self or expired touch", () => {
-    const db = store();
-    const referrer = member(db, "owner@example.com");
-    const code = db.acceptReferralTerms(referrer.actor, now).code;
-    db.rememberTouch("cookie-1", code, new Date(now.getTime() - 40 * day));
-    const expired = db.createUser({ email: "late@example.com", displayName: "Late", adultConfirmed: true, cookieId: "cookie-1", now });
-    expect(db.db.attributions.some((item) => item.referredUserId === expired.userId)).toBe(false);
-    const fresh = db.createUser({ email: "fresh@example.com", displayName: "Fresh", adultConfirmed: true, referralCode: code, now });
-    expect(db.db.attributions.filter((item) => item.referredUserId === fresh.userId)).toHaveLength(1);
-    const other = member(db, "other@example.com");
-    const otherCode = db.acceptReferralTerms(other.actor, now).code;
-    const still = db.createUser({ email: "second@example.com", displayName: "Second", adultConfirmed: true, referralCode: code, now });
-    db.createUser({ email: "nope@example.com", displayName: "Nope", adultConfirmed: true, referralCode: otherCode, now });
-    expect(db.db.attributions.find((item) => item.referredUserId === still.userId)?.referrerUserId).toBe(referrer.user.userId);
-    expect(() => db.createUser({ email: "owner@example.com", displayName: "Same", adultConfirmed: true, referralCode: code, now })).toThrow(AppError);
-  });
-});
-
-describe("safety and ads", () => {
+describe("safety", () => {
   it("blocks private fetch targets and formula cells", () => {
     expect(isBlockedFetchTarget("http://169.254.169.254/latest")).toBe(true);
     expect(isBlockedFetchTarget("https://127.0.0.1/admin")).toBe(true);
     expect(isBlockedFetchTarget("https://careers.example.com/jobs")).toBe(false);
     expect(escapeCsvCell("=cmd()")).toBe("'=cmd()");
-  });
-
-  it("keeps sponsor slot math, but feed ads stay paused", () => {
-    const jobs = Array.from({ length: 20 }, (_, index) => index + 1);
-    const slotted = insertSponsorSlots(jobs, 0, 10, "camp");
-    expect(slotted.filter((item) => item.type === "sponsored")).toHaveLength(2);
-    expect(slotted[10]).toMatchObject({ type: "sponsored" });
-    const next = insertSponsorSlots(jobs, 20, 10, "camp");
-    expect(next.filter((item) => item.type === "sponsored")).toHaveLength(2);
-    const db = store();
-    const owner = admin(db);
-    db.setFlag(owner.actor, "ads_enabled", true, now);
-    db.saveCampaign(owner.actor, {
-      name: "Example sponsor",
-      destinationUrl: "https://sponsor.example.com",
-      startsAt: new Date(now.getTime() - day).toISOString(),
-      endsAt: new Date(now.getTime() + day).toISOString(),
-      active: true,
-    }, now);
-    for (let index = 0; index < 10; index += 1) db.db.jobsCurrent.push(fakeJob(index));
-    const free = member(db, "adfree@example.com").actor;
-    const page = db.listFeed(free, { sort: "latest", now });
-    // Ads insertion is intentionally disabled in MemoryStore.sponsorId for now.
-    expect(page.items.some((item) => item.type === "sponsored")).toBe(false);
-  });
-
-  it("verifies webhook signatures against the raw body", () => {
-    const raw = "{\"event\":\"payment.captured\"}";
-    const signature = webhookSignature(raw, "whsec");
-    expect(safeEqualHex(signature, webhookSignature(raw, "whsec"))).toBe(true);
-    expect(safeEqualHex(signature, webhookSignature(raw + " ", "whsec"))).toBe(false);
   });
 });
 

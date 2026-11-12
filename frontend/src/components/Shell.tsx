@@ -16,7 +16,6 @@ export function PublicShell() {
       <header className="wrap topbar">
         <Link className="wordmark" to="/">Pikajobs</Link>
         <nav className="nav-links">
-          <Link to="/pricing">Pricing</Link>
           {user ? (
             <Link className="btn-primary" to="/feed">Open feed</Link>
           ) : (

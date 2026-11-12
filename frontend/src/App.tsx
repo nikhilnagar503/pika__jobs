@@ -12,14 +12,13 @@ import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { SignInPage, SignUpPage } from "@/pages/AuthPages";
 import { FeedPage } from "@/pages/FeedPage";
 import { HomePage } from "@/pages/HomePage";
-import { ActivityPage, PricingPage, SavedPage } from "@/pages/SavedActivityPages";
+import { ActivityPage, SavedPage } from "@/pages/SavedActivityPages";
 
 export function App() {
   return (
     <Routes>
       <Route element={<PublicShell />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/auth/sign-in" element={<SignInPage />} />
         <Route path="/auth/sign-up" element={<SignUpPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />

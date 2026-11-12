@@ -8,7 +8,6 @@ type Account = {
   displayName: string;
   email: string;
   countryCode: string;
-  proUntil: string | null;
   roles: string[];
 };
 
@@ -48,9 +47,8 @@ export function AccountPage() {
       <section className="account-grid">
         <article className="account-card">
           <h2>Membership</h2>
-          <p>Plan: {account?.proUntil ? "Pro pass" : "Free"}</p>
+          <p>Free member access</p>
           <p className="muted">Country: {account?.countryCode || "IN"}</p>
-          <Link className="btn-ghost" to="/pricing">See Pro</Link>
         </article>
         <article className="account-card">
           <h2>Shortcuts</h2>

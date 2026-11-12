@@ -43,14 +43,6 @@ meRouter.get(
   }, { persist: false }),
 );
 
-meRouter.get(
-  "/referrals",
-  asyncHandler(async (req, res) => {
-    const actor = requireUser(req);
-    res.json(req.store.referralDashboard(actor));
-  }, { persist: false }),
-);
-
 meRouter.put(
   "/preferences",
   asyncHandler(async (req, res) => {

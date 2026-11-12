@@ -4,7 +4,7 @@
 import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { formatPay } from "@/domain/jobs/pay";
 import { compareLatest } from "@/domain/jobs/feed";
-import type { Actor, JobRecord } from "@/domain/types";
+import type { JobRecord } from "@/domain/types";
 import { AppError } from "@/http";
 import type { CredentialRecord } from "@/repositories/db";
 import type { FeedCursor, JobCard } from "@/repositories/store/types";
@@ -99,10 +99,6 @@ export function decodeCursor(value: string): FeedCursor {
 export function clientRefOf(raw: unknown): string {
   if (raw && typeof raw === "object" && "client_reference" in raw && typeof raw.client_reference === "string") return raw.client_reference;
   return "unknown";
-}
-
-export function proActive(actor: Actor, now: Date): boolean {
-  return actor.kind === "user" && actor.proUntil != null && new Date(actor.proUntil).getTime() > now.getTime();
 }
 
 export function encryptSecret(value: string, secret: string): string {

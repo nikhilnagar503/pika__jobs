@@ -9,10 +9,9 @@ import {
   createDatabase,
   emptyPreferences,
   type Database,
-  type PayoutRecord,
 } from "@/repositories/db";
 
-export type StoreOptions = { paymentsEnabled?: boolean; sessionSecret?: string };
+export type StoreOptions = { sessionSecret?: string };
 
 export class StoreCore {
   constructor(
@@ -122,8 +121,5 @@ export class StoreCore {
   protected assertLocations() {
     const ids = [...this.db.jobsCurrent, ...this.db.jobsArchive, ...this.db.drafts].map((job) => job.jobId);
     if (new Set(ids).size !== ids.length) throw new Error("A job payload exists in more than one store.");
-  }
-  protected paymentsOn(): boolean {
-    return Boolean(this.options.paymentsEnabled) && this.db.flags.payments_enabled;
   }
 }

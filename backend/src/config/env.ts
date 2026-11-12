@@ -24,7 +24,6 @@ export const env = {
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   adminEmail: (process.env.PIKAJOBS_ADMIN_EMAIL || "nagarn603@gmail.com").toLowerCase(),
-  paymentsEnabled: process.env.PIKAJOBS_PAYMENTS_ENABLED === "true",
   taskSecret: process.env.PIKAJOBS_TASK_SECRET || "",
 };
 

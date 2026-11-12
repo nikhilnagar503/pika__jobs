@@ -2,7 +2,6 @@
  * Shared types for the in-memory domain store.
  * Import these instead of reaching into MemoryStore internals.
  */
-import type { FeedItem } from "@/domain/ads";
 
 export type JobInput = {
   jobId?: string;
@@ -85,11 +84,10 @@ export type JobCard = {
 };
 
 export type FeedPage = {
-  items: FeedItem<JobCard>[];
+  items: Array<{ type: "job"; job: JobCard }>;
   nextCursor: string | null;
   asOf: string;
   total: number;
-  sponsor: { id: string; name: string; destinationUrl: string } | null;
 };
 
 export type FeedCursor = {

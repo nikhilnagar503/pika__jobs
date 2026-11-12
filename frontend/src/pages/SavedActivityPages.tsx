@@ -66,12 +66,4 @@ export function ActivityPage() {
   );
 }
 
-export function PricingPage() {
-  return (
-    <main className="wrap" style={{ paddingTop: 32 }}>
-      <h1>Pricing</h1>
-      <p className="muted">Free feed access after signup. Pro is an optional 30-day pass.</p>
-    </main>
-  );
-}
 

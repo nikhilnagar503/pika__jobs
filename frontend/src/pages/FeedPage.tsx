@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { getCached, setCached } from "@/lib/feed-cache";
 import { restoreScroll, saveScroll } from "@/lib/scroll";
 
-type FeedItem = { type: "job"; job: JobCardData } | { type: "sponsored" };
+type FeedItem = { type: "job"; job: JobCardData };
 
 type FeedPageData = {
   items: FeedItem[];
