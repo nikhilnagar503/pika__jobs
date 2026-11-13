@@ -27,6 +27,13 @@ export function PublicShell() {
         </nav>
       </header>
       <Outlet />
+      <footer className="wrap footer">
+        <p>© {new Date().getFullYear()} Pikajobs. Curated opportunities.</p>
+        <div className="footer-links">
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms of Service</Link>
+        </div>
+      </footer>
     </>
   );
 }

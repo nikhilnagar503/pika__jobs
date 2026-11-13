@@ -12,6 +12,8 @@ import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { SignInPage, SignUpPage } from "@/pages/AuthPages";
 import { FeedPage } from "@/pages/FeedPage";
 import { HomePage } from "@/pages/HomePage";
+import { PrivacyPolicyPage } from "@/pages/PrivacyPolicyPage";
+import { TermsPage } from "@/pages/TermsPage";
 import { ActivityPage, SavedPage } from "@/pages/SavedActivityPages";
 
 export function App() {
@@ -22,6 +24,8 @@ export function App() {
         <Route path="/auth/sign-in" element={<SignInPage />} />
         <Route path="/auth/sign-up" element={<SignUpPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
       </Route>
 
       <Route element={<MemberShell />}>
