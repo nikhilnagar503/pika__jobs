@@ -44,8 +44,11 @@ export async function actorFromRequest(req: Request, store: MemoryStore): Promis
     if (!profile) {
       const displayName =
         (typeof user.user_metadata?.display_name === "string" && user.user_metadata.display_name) ||
+        (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name) ||
+        (typeof user.user_metadata?.name === "string" && user.user_metadata.name) ||
         user.email.split("@")[0];
-      await ensureProfile(user.id, displayName, user.user_metadata?.adult_confirmed === true);
+      const isAdult = user.user_metadata?.adult_confirmed !== false;
+      await ensureProfile(user.id, displayName, isAdult);
       profile = await fetchProfile(user.id);
     }
 
@@ -61,10 +64,15 @@ export async function actorFromRequest(req: Request, store: MemoryStore): Promis
     );
   }
 
-  const adultConfirmed = Boolean(profile?.adult_confirmed ?? user.user_metadata?.adult_confirmed === true);
+  const adultConfirmed = Boolean(
+    profile?.adult_confirmed ??
+      (user.user_metadata?.adult_confirmed === undefined ? true : user.user_metadata.adult_confirmed === true),
+  );
   const displayName =
     profile?.display_name ||
     (typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name : "") ||
+    (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
+    (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "") ||
     user.email.split("@")[0];
 
   store.ensureAuthUser({

@@ -8,6 +8,7 @@ type AuthState = {
   user: User | null;
   configured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (next?: string) => Promise<void>;
   signUp: (
     email: string,
     password: string,
@@ -47,6 +48,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           throw error;
         }
+      },
+      async signInWithGoogle(next = "/feed") {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
+        if (next && next !== "/feed") {
+          callbackUrl.searchParams.set("next", next);
+        }
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: callbackUrl.toString(),
+            queryParams: {
+              access_type: "offline",
+              prompt: "consent",
+            },
+          },
+        });
+        if (error) throw error;
       },
       async signUp(email, password, displayName) {
         if (!supabase) throw new Error("Supabase is not configured.");

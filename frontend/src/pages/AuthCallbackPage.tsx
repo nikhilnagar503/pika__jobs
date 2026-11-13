@@ -17,6 +17,7 @@ export function AuthCallbackPage() {
 
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
+      const next = url.searchParams.get("next") || "/feed";
       const authError = url.searchParams.get("error_description") || url.searchParams.get("error");
 
       if (authError) {
@@ -40,10 +41,10 @@ export function AuthCallbackPage() {
             }
           }
         }
-        if (!cancelled) navigate("/feed", { replace: true });
+        if (!cancelled) navigate(next, { replace: true });
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Could not finish email confirmation.");
+          setError(err instanceof Error ? err.message : "Could not finish authentication.");
         }
       }
     }
@@ -56,7 +57,7 @@ export function AuthCallbackPage() {
 
   return (
     <main className="wrap" style={{ maxWidth: 480, paddingTop: 48 }}>
-      <h1>Confirming email…</h1>
+      <h1>Signing you in…</h1>
       {error ? (
         <div className="panel">
           <p className="error">{error}</p>
@@ -70,3 +71,4 @@ export function AuthCallbackPage() {
     </main>
   );
 }
+``
