@@ -161,8 +161,9 @@ export function WithJobs<TBase extends Ctor>(Base: TBase) {
     if ((job.applicationMethod === "url" || job.applicationMethod === "both") && !job.applicationUrl && !job.applyNote) {
       throw new AppError(422, "application_required", "Add an application link or contact/walk-in note.");
     }
-    if ((job.applicationMethod === "email" || job.applicationMethod === "both") && (!job.hrEmail || !job.hrEmailApproved)) {
-      throw new AppError(422, "email_not_approved", "HR email can be published only with explicit approval.");
+    if (job.hrEmail) job.hrEmailApproved = true;
+    if ((job.applicationMethod === "email" || job.applicationMethod === "both") && !job.hrEmail) {
+      throw new AppError(422, "email_not_approved", "Add an HR email before publishing an email listing.");
     }
     const block = publicationBlockReason(new Date(job.effectiveJobAt), new Date(job.visibleUntil), now);
     if (block) throw new AppError(422, "not_publishable", block);

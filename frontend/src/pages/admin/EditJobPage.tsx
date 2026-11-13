@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
+import { invalidateCached } from "@/lib/feed-cache";
 
 type AdminJob = {
   jobId: string;
@@ -42,6 +43,7 @@ export function AdminEditJobPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const canPublish = job?.lifecycle === "draft" || job?.lifecycle === "in_review";
 
   useEffect(() => {
     setLoading(true);
@@ -96,10 +98,36 @@ export function AdminEditJobPage() {
         { method: "PUT", body: JSON.stringify(body) },
       );
       setMessage(`Saved · ${result.lifecycle}`);
+      if (result.lifecycle === "published") {
+        invalidateCached("member-feed:");
+        invalidateCached("admin-feed");
+      }
       const refreshed = await api<{ job: AdminJob }>(`/api/v1/admin/jobs/${job.jobId}`);
       setJob(refreshed.job);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save listing.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function publishNow() {
+    if (!job) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const published = await api<{ jobId: string; lifecycle: string }>(
+        `/api/v1/admin/jobs/${job.jobId}/publish`,
+        { method: "POST" },
+      );
+      setMessage(`Published · ${published.lifecycle}`);
+      invalidateCached("member-feed:");
+      invalidateCached("admin-feed");
+      const refreshed = await api<{ job: AdminJob }>(`/api/v1/admin/jobs/${job.jobId}`);
+      setJob(refreshed.job);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish listing.");
     } finally {
       setSaving(false);
     }
@@ -129,8 +157,13 @@ export function AdminEditJobPage() {
           <h1>Edit job</h1>
           <p className="muted">{job.companyName} · {job.lifecycle} · v{job.version}</p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link className="btn-ghost" to="/admin/feed">Back to feed</Link>
+          {canPublish && (
+            <button className="btn-primary" type="button" onClick={publishNow} disabled={saving}>
+              {saving ? "Publishing…" : "Publish to feed"}
+            </button>
+          )}
           <button className="btn-danger" type="button" onClick={deleteJob} disabled={saving}>
             Delete
           </button>

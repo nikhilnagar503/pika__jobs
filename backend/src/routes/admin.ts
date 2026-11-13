@@ -335,6 +335,45 @@ adminRouter.post(
 );
 
 adminRouter.post(
+  "/jobs/publish-many",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    const ids = Array.isArray(req.body?.jobIds)
+      ? req.body.jobIds.filter((id: unknown): id is string => typeof id === "string" && Boolean(id))
+      : [];
+    if (!ids.length) {
+      throw new AppError(422, "invalid_import", "Select at least one draft to publish.");
+    }
+    const published: Array<{ jobId: string; companyName: string; title: string }> = [];
+    const failed: Array<{ jobId: string; companyName: string; title: string; message: string }> = [];
+    for (const jobId of ids) {
+      let companyName = "";
+      let title = "";
+      try {
+        const existing = req.store.getAdminJob(actor, jobId);
+        companyName = existing.companyName;
+        title = existing.title;
+        const job = req.store.publishJob(actor, jobId);
+        published.push({ jobId: job.jobId, companyName: job.companyName, title: job.title });
+      } catch (error) {
+        failed.push({
+          jobId,
+          companyName,
+          title,
+          message: error instanceof Error ? error.message : "Could not publish.",
+        });
+      }
+    }
+    res.json({
+      publishedCount: published.length,
+      failedCount: failed.length,
+      published,
+      failed,
+    });
+  }),
+);
+
+adminRouter.post(
   "/jobs/delete-many",
   asyncHandler(async (req, res) => {
     const actor = requireAdmin(req);
@@ -359,6 +398,26 @@ adminRouter.post(
     }
     res.json({ deletedCount: deleted.length, failedCount: failed.length, deleted, failed });
   }),
+);
+
+adminRouter.get(
+  "/users",
+  asyncHandler(async (req, res) => {
+    const actor = requireAdmin(req);
+    const items = req.store.listUsers(actor).map((user) => ({
+      userId: user.userId,
+      email: user.email,
+      displayName: user.displayName,
+      createdAt: user.createdAt,
+      deletedAt: user.deletedAt,
+      roles: user.roles,
+      suspended: user.suspended,
+    }));
+    res.json({
+      items,
+      count: items.filter((user) => !user.deletedAt).length,
+    });
+  }, { persist: false }),
 );
 
 adminRouter.get(

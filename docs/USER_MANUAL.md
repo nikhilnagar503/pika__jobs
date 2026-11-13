@@ -1,37 +1,26 @@
 # Pikajobs user manual
 
+How to use Pikajobs as a student or job seeker. The same guide is on the site at `/help`.
+
 ## What it is
 
-Pikajobs is a curated job/internship feed for adults in India (18+). Members browse alert-style listings and apply on the employer site or by email. Pikajobs does not submit applications for users.
+Pikajobs is a curated feed of jobs and internships. You browse cards, save the ones you like, and apply on the employer site or by email. Pikajobs does not send applications for you.
 
-## Stack
+## Start
 
-| Layer | Location | Host |
-| --- | --- | --- |
-| Frontend SPA | `frontend/` | Vercel |
-| Express API | `backend/` | Hostinger VPS |
-| Auth | Supabase | Supabase cloud |
+1. Create an account with email or Google. You must be 18+.
+2. Open **Feed**.
+3. Read a card. If it looks right, click the apply link or email.
+4. Use **Save** to keep a role for later. **Activity** shows what you opened.
 
-## Who can access admin
+## Feed
 
-Only **`nagarn603@gmail.com`** with an admin role. Defined in product config / `PIKAJOBS_ADMIN_EMAIL`.
+Only listings from the last 14 days, newest first. Older roles drop off automatically. Search by company, role, or stipend.
 
-## How jobs get in
+## Apply
 
-1. **Manual:** Admin UI `/admin/jobs/new` → `POST /api/v1/admin/jobs`  
-2. **Agent batch:** `POST /api/v1/ingestion/jobs` with bearer agent token  
-3. **Member feed:** `GET /api/v1/jobs` (requires sign-in JWT)
+Each card has an apply link, an HR email, or both. Click Apply to finish on the employer form or in your mail app. We do not upload your CV.
 
-## Local run
+## Account
 
-```bash
-npm install
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-npm run dev:backend
-npm run dev:frontend
-```
-
-## Scope note
-
-Payments, Pro paywall, referrals, payouts, and ads are **not in the live product** right now. The app is free member feed + admin job management. Those features can be added back later.
+Open **Account** to see your email, sign out, or delete your account. Deleting your account removes your Pikajobs profile and saved items.

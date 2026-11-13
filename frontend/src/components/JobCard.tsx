@@ -33,12 +33,18 @@ type JobCardProps = {
   job: JobCardData;
   mode?: "member" | "admin";
   onDeleted?: (jobId: string) => void;
+  onPublished?: (jobId: string) => void;
 };
 
-export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
+function isDraftLifecycle(lifecycle?: string) {
+  return lifecycle === "draft" || lifecycle === "in_review";
+}
+
+export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCardProps) {
   const [saved, setSaved] = useState(job.saved);
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const payKey = job.opportunityKind === "internship" ? "Stipend" : "CTC";
   const postedAt = job.publishedAt || job.firstSeenAt || job.effectiveJobAt;
   const mailto = job.hrEmail
@@ -50,6 +56,19 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
     try {
       await api(`/api/v1/me/saved/${job.id}`, { method: saved ? "DELETE" : "PUT" });
       setSaved(!saved);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function publishJob() {
+    setPending(true);
+    setPublishError("");
+    try {
+      await api(`/api/v1/admin/jobs/${job.id}/publish`, { method: "POST" });
+      onPublished?.(job.id);
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : "Could not publish this listing.");
     } finally {
       setPending(false);
     }
@@ -78,6 +97,11 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
           {job.accessTier === "pro" && <span className="flag">Pro</span>}
           {mode === "admin" ? (
             <>
+              {isDraftLifecycle(job.lifecycle) && (
+                <button className="btn-primary save-btn" type="button" onClick={publishJob} disabled={pending}>
+                  {pending ? "…" : "Publish"}
+                </button>
+              )}
               <Link
                 className="btn-ghost save-btn"
                 to={`/admin/jobs/${job.id}/edit`}
@@ -113,6 +137,7 @@ export function JobCard({ job, mode = "member", onDeleted }: JobCardProps) {
           )}
         </div>
       </header>
+      {publishError && <p className="error">{publishError}</p>}
       <div className="alert-body">
         <p><strong>Company:</strong> {job.companyName}</p>
         <p>

@@ -7,7 +7,11 @@ import { AdminImportJobsPage } from "@/pages/admin/ImportJobsPage";
 import { AdminJobsPage } from "@/pages/admin/JobsPage";
 import { AdminLayout } from "@/pages/admin/Layout";
 import { AdminNewJobPage } from "@/pages/admin/NewJobPage";
+import { AdminArchivePage } from "@/pages/admin/ArchivePage";
+import { AdminGuidePage } from "@/pages/admin/GuidePage";
+import { AdminMembersPage } from "@/pages/admin/MembersPage";
 import { AdminOverviewPage } from "@/pages/admin/OverviewPage";
+import { HelpPage } from "@/pages/HelpPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { SignInPage, SignUpPage } from "@/pages/AuthPages";
 import { FeedPage } from "@/pages/FeedPage";
@@ -24,6 +28,7 @@ export function App() {
         <Route path="/auth/sign-in" element={<SignInPage />} />
         <Route path="/auth/sign-up" element={<SignUpPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/help" element={<HelpPage />} />
         <Route path="/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/terms" element={<TermsPage />} />
       </Route>
@@ -42,6 +47,9 @@ export function App() {
         <Route path="jobs/new" element={<AdminNewJobPage />} />
         <Route path="jobs/import" element={<AdminImportJobsPage />} />
         <Route path="jobs/:id/edit" element={<AdminEditJobPage />} />
+        <Route path="archive" element={<AdminArchivePage />} />
+        <Route path="members" element={<AdminMembersPage />} />
+        <Route path="manual" element={<AdminGuidePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

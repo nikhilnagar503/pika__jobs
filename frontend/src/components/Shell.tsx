@@ -20,6 +20,7 @@ export function PublicShell() {
             <Link className="btn-primary" to="/feed">Open feed</Link>
           ) : (
             <>
+              <Link to="/help">User manual</Link>
               <Link to="/auth/sign-in">Sign in</Link>
               <Link className="btn-primary" to="/auth/sign-up">Sign up</Link>
             </>
@@ -30,6 +31,7 @@ export function PublicShell() {
       <footer className="wrap footer">
         <p>© {new Date().getFullYear()} Pikajobs. Curated opportunities.</p>
         <div className="footer-links">
+          <Link to="/help">User manual</Link>
           <Link to="/privacy">Privacy Policy</Link>
           <Link to="/terms">Terms of Service</Link>
         </div>
@@ -48,6 +50,7 @@ export function MemberShell() {
         {memberLinks.map(([href, label]) => (
           <NavLink key={href} to={href}>{label}</NavLink>
         ))}
+        <NavLink to="/help">Help</NavLink>
         {isAdmin && <NavLink to="/admin">Admin</NavLink>}
       </nav>
       <main id="main" className="feed">

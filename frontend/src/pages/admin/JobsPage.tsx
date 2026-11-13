@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+import { invalidateCached } from "@/lib/feed-cache";
 
 type AdminJob = {
   jobId: string;
@@ -9,6 +10,10 @@ type AdminJob = {
   lifecycle: string;
   accessTier: string;
 };
+
+function isDraft(job: AdminJob) {
+  return job.lifecycle === "draft" || job.lifecycle === "in_review";
+}
 
 export function AdminJobsPage() {
   const [items, setItems] = useState<AdminJob[]>([]);
@@ -24,7 +29,7 @@ export function AdminJobsPage() {
       api<{ items: AdminJob[] }>("/api/v1/admin/jobs?scope=review"),
     ])
       .then(([current, drafts]) => {
-        setItems([...current.items, ...drafts.items]);
+        setItems([...drafts.items, ...current.items]);
         setSelected({});
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load jobs."));
@@ -38,6 +43,11 @@ export function AdminJobsPage() {
     () => items.filter((job) => selected[job.jobId]).map((job) => job.jobId),
     [items, selected],
   );
+  const selectedDraftIds = useMemo(
+    () => items.filter((job) => selected[job.jobId] && isDraft(job)).map((job) => job.jobId),
+    [items, selected],
+  );
+  const draftCount = items.filter(isDraft).length;
 
   function toggleAll(checked: boolean) {
     if (!checked) {
@@ -47,6 +57,43 @@ export function AdminJobsPage() {
     const next: Record<string, boolean> = {};
     for (const job of items) next[job.jobId] = true;
     setSelected(next);
+  }
+
+  async function publishIds(jobIds: string[]) {
+    if (!jobIds.length) return;
+    setPending(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await api<{
+        publishedCount: number;
+        failedCount: number;
+        published: Array<{ jobId: string }>;
+        failed: Array<{ companyName: string; title: string; message: string }>;
+      }>("/api/v1/admin/jobs/publish-many", {
+        method: "POST",
+        body: JSON.stringify({ jobIds }),
+      });
+      const published = new Set(result.published.map((item) => item.jobId));
+      setItems((current) =>
+        current.map((job) => (published.has(job.jobId) ? { ...job, lifecycle: "published" } : job)),
+      );
+      setSelected({});
+      invalidateCached("member-feed:");
+      invalidateCached("admin-feed");
+      const failedNote = result.failed
+        .map((item) => `${item.companyName} · ${item.title}: ${item.message}`)
+        .join(" ");
+      setMessage(
+        result.failedCount
+          ? `Published ${result.publishedCount}. Could not publish ${result.failedCount}. ${failedNote}`
+          : `Published ${result.publishedCount} job${result.publishedCount === 1 ? "" : "s"} to the member feed.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish jobs.");
+    } finally {
+      setPending(false);
+    }
   }
 
   async function deleteIds(jobIds: string[]) {
@@ -65,6 +112,8 @@ export function AdminJobsPage() {
       setItems((current) => current.filter((job) => !jobIds.includes(job.jobId)));
       setSelected({});
       setConfirmId("");
+      invalidateCached("member-feed:");
+      invalidateCached("admin-feed");
       setMessage(
         result.failedCount
           ? `Deleted ${result.deletedCount}. Failed ${result.failedCount}.`
@@ -82,7 +131,9 @@ export function AdminJobsPage() {
       <header className="admin-header">
         <div>
           <h1>Jobs</h1>
-          <p className="muted">Select jobs and delete them, or delete one by one.</p>
+          <p className="muted">
+            Drafts are not on the member feed. Publish them here, or open a card and click Publish.
+          </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Link className="btn-ghost" to="/admin/jobs/import">Import JSON</Link>
@@ -91,7 +142,7 @@ export function AdminJobsPage() {
       </header>
 
       {error && <p className="error">{error}</p>}
-      {message && <p className="meta">{message}</p>}
+      {message && <p className="notice">{message}</p>}
 
       <div className="admin-bulk-bar">
         <label className="checks">
@@ -102,15 +153,29 @@ export function AdminJobsPage() {
           />
           Select all ({selectedIds.length}/{items.length})
         </label>
-        <button
-          className="btn-danger"
-          type="button"
-          disabled={pending || selectedIds.length === 0}
-          onClick={() => deleteIds(selectedIds)}
-        >
-          {pending ? "Deleting…" : `Delete selected (${selectedIds.length})`}
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            className="btn-primary"
+            type="button"
+            disabled={pending || selectedDraftIds.length === 0}
+            onClick={() => publishIds(selectedDraftIds)}
+          >
+            {pending ? "Working…" : `Publish selected drafts (${selectedDraftIds.length})`}
+          </button>
+          <button
+            className="btn-danger"
+            type="button"
+            disabled={pending || selectedIds.length === 0}
+            onClick={() => deleteIds(selectedIds)}
+          >
+            {pending ? "Working…" : `Delete selected (${selectedIds.length})`}
+          </button>
+        </div>
       </div>
+
+      {draftCount > 0 && (
+        <p className="muted">{draftCount} draft{draftCount === 1 ? "" : "s"} waiting to go live.</p>
+      )}
 
       <div className="admin-job-list">
         {items.map((job) => (
@@ -129,6 +194,19 @@ export function AdminJobsPage() {
               </span>
             </label>
             <div className="admin-job-actions">
+              {isDraft(job) && (
+                <button
+                  className="btn-primary"
+                  type="button"
+                  disabled={pending}
+                  onClick={() => publishIds([job.jobId])}
+                >
+                  Publish
+                </button>
+              )}
+              <Link className="btn-ghost" to={`/admin/jobs/${job.jobId}/edit`}>
+                Edit
+              </Link>
               {confirmId === job.jobId ? (
                 <>
                   <button

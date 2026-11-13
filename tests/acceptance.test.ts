@@ -258,6 +258,27 @@ describe("access", () => {
     expect(db.listActivity(reader.actor).some((item) => item.kind === "applied")).toBe(true);
     expect(buildMailto("hr@example.com", "Hello\r\nBcc: x")).not.toContain("\n");
   });
+
+  it("lets an admin publish an email draft without a prior approval checkbox", () => {
+    const db = store();
+    const { actor } = admin(db);
+    const src = source(db, actor);
+    const job = db.saveJob(actor, input(src.id, {
+      title: "AI Intern",
+      companyName: "Krystelis Ltd",
+      applicationMethod: "email",
+      applicationUrl: null,
+      hrEmail: "bhawna.ghoghaliya@krystelis.com",
+      hrEmailApproved: false,
+      sourceUrl: "https://pikajobs.com/import/tg-krystelis",
+    }), now);
+    expect(job.lifecycle).toBe("draft");
+    const published = db.publishJob(actor, job.jobId, now);
+    expect(published.lifecycle).toBe("published");
+    expect(published.hrEmailApproved).toBe(true);
+    expect(db.db.jobsCurrent).toHaveLength(1);
+    expect(db.db.drafts).toHaveLength(0);
+  });
 });
 
 describe("intake", () => {
