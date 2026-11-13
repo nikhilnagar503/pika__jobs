@@ -111,6 +111,30 @@ export async function bootstrapAdminIfNeeded(userId: string, email: string): Pro
   return fetchRoles(userId);
 }
 
+export async function deleteSupabaseUser(userId: string): Promise<boolean> {
+  if (!supabaseConfigured() || !env.supabaseUrl) return false;
+  const key = env.supabaseServiceRoleKey || env.supabaseAnonKey;
+  if (!key) return false;
+  try {
+    const response = await fetch(`${env.supabaseUrl}/auth/v1/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+    });
+    return response.ok;
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        code: "supabase_delete_user_failed",
+        message: error instanceof Error ? error.message : "unknown",
+      }),
+    );
+    return false;
+  }
+}
+
 /** Kept for call-site compatibility; server no longer uses the realtime JS client. */
 export function createSupabaseAdmin() {
   return null;

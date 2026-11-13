@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler, requireUser } from "@/middleware/store";
+import { deleteSupabaseUser } from "@/auth/supabase";
 
 export const meRouter = Router();
 
@@ -9,6 +10,16 @@ meRouter.get(
     const actor = requireUser(req);
     res.json(req.store.account(actor));
   }, { persist: false }),
+);
+
+meRouter.delete(
+  "/",
+  asyncHandler(async (req, res) => {
+    const actor = requireUser(req);
+    const result = req.store.deleteAccount(actor);
+    await deleteSupabaseUser(actor.userId);
+    res.json(result);
+  }),
 );
 
 meRouter.get(

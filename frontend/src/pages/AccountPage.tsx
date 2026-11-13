@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_EMAIL } from "@/lib/config";
@@ -15,6 +15,8 @@ export function AccountPage() {
   const { user, ready, signOut } = useAuth();
   const [account, setAccount] = useState<Account | null>(null);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) return;
@@ -32,6 +34,24 @@ export function AccountPage() {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+
+  async function onDeleteAccount() {
+    const confirmed = window.confirm(
+      "Are you sure you want to permanently delete your account? All your saved jobs, preferences, and data will be removed. This action cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError("");
+    try {
+      await api("/api/v1/me", { method: "DELETE" });
+      await signOut();
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete account.");
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="account">
@@ -64,7 +84,35 @@ export function AccountPage() {
           {isAdmin && <Link className="btn-primary" to="/admin">Open admin workspace</Link>}
         </article>
       </section>
-      <button className="btn-ghost" type="button" onClick={() => signOut()}>Sign out</button>
+
+      <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+        <button className="btn-ghost" type="button" onClick={() => signOut()}>
+          Sign out
+        </button>
+      </div>
+
+      <section
+        className="panel"
+        style={{
+          marginTop: 32,
+          border: "1px solid #fecaca",
+          background: "#fff5f5",
+          borderRadius: 12,
+        }}
+      >
+        <h2 style={{ fontSize: 16, color: "#991b1b", margin: "0 0 8px" }}>Danger Zone</h2>
+        <p className="muted" style={{ margin: "0 0 16px" }}>
+          Permanently delete your Pikajobs account and all associated saved listings and preferences.
+        </p>
+        <button
+          className="btn-danger"
+          type="button"
+          onClick={onDeleteAccount}
+          disabled={deleting}
+        >
+          {deleting ? "Deleting account…" : "Delete account"}
+        </button>
+      </section>
     </div>
   );
 }

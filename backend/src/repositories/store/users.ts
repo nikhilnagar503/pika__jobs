@@ -120,6 +120,12 @@ export function WithUsers<TBase extends Ctor>(Base: TBase) {
       return user;
     }
 
+    deleteAccount(actor: Actor, now = new Date()): { ok: true } {
+      const user = this.user(actor);
+      user.deletedAt = now.toISOString();
+      return { ok: true };
+    }
+
     savePreferences(actor: Actor, patch: Partial<Preferences> & { step?: number; complete?: boolean }, now = new Date()): Preferences {
       const user = this.user(actor);
       const prefs = this.prefs(user.userId, now);
