@@ -1,7 +1,7 @@
 /** Member feed, job detail, saved list, and activity. */
 import { product } from "@/shared/product";
 import { compareLatest, emptyFilters, matchesFilters, scoreJob, type FeedFilters } from "@/domain/jobs/feed";
-import { isVisibleAt } from "@/domain/jobs/visibility";
+import { isVisibleAt, listingVisibleUntil } from "@/domain/jobs/visibility";
 import { buildMailto } from "@/domain/safety";
 import { canReadTier, type Actor, type JobRecord } from "@/domain/types";
 import { AppError } from "@/http";
@@ -48,7 +48,7 @@ export function WithFeed<TBase extends Ctor>(Base: TBase) {
       const visible = this.db.jobsCurrent.filter(
         (job) =>
           job.lifecycle === "published" &&
-          isVisibleAt(new Date(job.visibleUntil), now) &&
+          isVisibleAt(listingVisibleUntil(job), now) &&
           new Date(job.publishedAt ?? job.firstSeenAt).getTime() <= asOf.getTime() &&
           canReadTier(actor, job.accessTier, now, preview),
       );
@@ -91,7 +91,7 @@ export function WithFeed<TBase extends Ctor>(Base: TBase) {
       }
       const readable =
         job.lifecycle === "published" &&
-        isVisibleAt(new Date(job.visibleUntil), now) &&
+        isVisibleAt(listingVisibleUntil(job), now) &&
         this.db.jobsCurrent.some((item) => item.jobId === job.jobId);
       if (!readable) {
         return { status: "unavailable" as const };
@@ -129,7 +129,7 @@ export function WithFeed<TBase extends Ctor>(Base: TBase) {
         .map((item) => {
           const job = this.findAny(item.jobId);
           if (!job) return null;
-          const live = job.lifecycle === "published" && isVisibleAt(new Date(job.visibleUntil), now);
+          const live = job.lifecycle === "published" && isVisibleAt(listingVisibleUntil(job), now);
           if (!live) {
             return {
               ...toCard(job, [], true),

@@ -176,6 +176,26 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .feed-clear { color: var(--muted); text-decoration: none; font-size: 14px; white-space: nowrap; }
 .feed-count { margin: 0; color: var(--muted); font-size: 14px; }
+.feed-day-group {
+  display: grid;
+  gap: 16px;
+}
+.feed-day {
+  position: sticky;
+  top: 10px;
+  z-index: 3;
+  width: fit-content;
+  margin: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
 .activity-list {
   list-style: none;
   padding: 0;
@@ -483,6 +503,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
     gap: 16px;
   }
   .feed { gap: 16px; }
+  .feed-day-group { gap: 12px; }
+  .feed-day { top: 8px; }
   .bottom {
     display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0;
     z-index: 20;

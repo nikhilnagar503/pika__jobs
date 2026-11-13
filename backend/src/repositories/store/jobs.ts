@@ -1,6 +1,7 @@
 /** Create, publish, archive, and delete job listings. */
 import {
   computeVisibleUntil,
+  listingVisibleUntil,
   publicationBlockReason,
   resolveEffectiveJobAt,
 } from "@/domain/jobs/visibility";
@@ -165,7 +166,7 @@ export function WithJobs<TBase extends Ctor>(Base: TBase) {
     if ((job.applicationMethod === "email" || job.applicationMethod === "both") && !job.hrEmail) {
       throw new AppError(422, "email_not_approved", "Add an HR email before publishing an email listing.");
     }
-    const block = publicationBlockReason(new Date(job.effectiveJobAt), new Date(job.visibleUntil), now);
+    const block = publicationBlockReason(new Date(job.effectiveJobAt), listingVisibleUntil(job), now);
     if (block) throw new AppError(422, "not_publishable", block);
     const titleDuplicate = this.findLiveCompanyTitleDuplicate(job.companyName, job.title, job.jobId);
     if (titleDuplicate) {
@@ -208,7 +209,10 @@ export function WithJobs<TBase extends Ctor>(Base: TBase) {
 
   archiveDue(now = new Date(), batchSize = 500): { moved: number; skipped: string[] } {
     const due = this.db.jobsCurrent.filter(
-      (job) => new Date(job.visibleUntil).getTime() <= now.getTime() || job.lifecycle === "closed" || job.lifecycle === "removed",
+      (job) =>
+        listingVisibleUntil(job).getTime() <= now.getTime() ||
+        job.lifecycle === "closed" ||
+        job.lifecycle === "removed",
     );
     const skipped: string[] = [];
     let moved = 0;

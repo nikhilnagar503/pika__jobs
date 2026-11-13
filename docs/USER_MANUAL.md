@@ -1,6 +1,6 @@
 # Pikajobs user manual
 
-How to use Pikajobs as a student or job seeker. The same guide is on the site at `/help`.
+How to use Pikajobs as a student or job seeker.
 
 ## What it is
 
@@ -15,7 +15,7 @@ Pikajobs is a curated feed of jobs and internships. You browse cards, save the o
 
 ## Feed
 
-Only listings from the last 14 days, newest first. Older roles drop off automatically. Search by company, role, or stipend.
+Only listings from the last 7 days, newest first. Older roles move to archive automatically. Search by company, role, or stipend.
 
 ## Apply
 

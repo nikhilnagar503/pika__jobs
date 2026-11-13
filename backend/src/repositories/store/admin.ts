@@ -1,5 +1,5 @@
 /** Admin sources, overview, users, and flags. */
-import { isVisibleAt } from "@/domain/jobs/visibility";
+import { isVisibleAt, listingVisibleUntil } from "@/domain/jobs/visibility";
 import { isBlockedFetchTarget } from "@/domain/safety";
 import type { Actor } from "@/domain/types";
 import { AppError } from "@/http";
@@ -73,7 +73,7 @@ export function WithAdmin<TBase extends Ctor>(Base: TBase) {
       this.requireRole(actor, ["admin", "reviewer"]);
       return {
         liveJobs: this.db.jobsCurrent.filter(
-          (job) => job.lifecycle === "published" && isVisibleAt(new Date(job.visibleUntil), now),
+          (job) => job.lifecycle === "published" && isVisibleAt(listingVisibleUntil(job), now),
         ).length,
         pendingReview: this.db.drafts.length,
         archived: this.db.jobsArchive.length,

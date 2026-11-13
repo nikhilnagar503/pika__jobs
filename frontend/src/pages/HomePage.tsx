@@ -12,7 +12,7 @@ export function HomePage() {
         </p>
         <div className="cluster">
           <Link className="btn-primary" to={user ? "/feed" : "/auth/sign-up"}>Find jobs free</Link>
-          <Link to="/help">User manual</Link>
+          <a href="#how">See how it works</a>
         </div>
       </section>
       <section className="section" id="how">

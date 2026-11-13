@@ -72,11 +72,24 @@ function input(sourceId: string, patch: Partial<JobInput> = {}): JobInput {
 }
 
 describe("visibility and archive", () => {
-  it("hides a job at exactly 14 days and keeps it one hour earlier", () => {
+  it("hides a job at exactly 7 days and keeps it one hour earlier", () => {
     const effective = new Date("2026-10-11T08:00:00.000Z");
-    const cutoff = new Date(effective.getTime() + 14 * day);
+    const cutoff = new Date(effective.getTime() + 7 * day);
     expect(isVisibleAt(cutoff, new Date(cutoff.getTime() - 60 * 60 * 1000))).toBe(true);
     expect(isVisibleAt(cutoff, cutoff)).toBe(false);
+  });
+
+  it("archives a listing after 7 days even if the stored window is longer", () => {
+    const db = store();
+    const { actor } = admin(db);
+    const src = source(db, actor);
+    const created = db.saveJob(actor, input(src.id), now);
+    db.publishJob(actor, created.jobId, now);
+    created.visibleUntil = new Date(now.getTime() + 14 * day).toISOString();
+    const later = new Date(now.getTime() + 7 * day);
+    expect(db.listFeed(actor, { now: later }).items).toHaveLength(0);
+    expect(db.archiveDue(later).moved).toBe(1);
+    expect(db.db.jobsArchive).toHaveLength(1);
   });
 
   it("rejects a 45 day old source and does not reset age on reimport", () => {
@@ -126,7 +139,7 @@ describe("visibility and archive", () => {
     const src = source(db, actor);
     const created = db.saveJob(actor, input(src.id), now);
     db.publishJob(actor, created.jobId, now);
-    const later = new Date(now.getTime() + 14 * day);
+    const later = new Date(now.getTime() + 7 * day);
     const first = db.archiveDue(later);
     const second = db.archiveDue(later);
     expect(first.moved).toBe(1);

@@ -56,7 +56,7 @@ export function AdminArchivePage() {
         <div>
           <h1>Archive</h1>
           <p className="muted">
-            Jobs leave the live feed after 14 days, or when you delete them. Students do not see this list.
+            Jobs leave the live feed after 7 days, or when you delete them. Students do not see this list.
           </p>
         </div>
       </header>
@@ -74,7 +74,7 @@ export function AdminArchivePage() {
         </div>
         <div className="import-count">
           <strong>{expiredCount}</strong>
-          <span>Expired after 14 days</span>
+          <span>Expired after 7 days</span>
         </div>
         <div className="import-count">
           <strong>{items.length - deletedCount - expiredCount}</strong>

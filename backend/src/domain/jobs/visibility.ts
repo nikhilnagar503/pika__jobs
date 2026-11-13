@@ -6,6 +6,16 @@ export function computeVisibleUntil(effectiveJobAt: Date, deadlineAt: Date | nul
   return deadlineAt.getTime() < windowEnd.getTime() ? deadlineAt : windowEnd;
 }
 
+export function listingVisibleUntil(job: {
+  effectiveJobAt: string;
+  deadlineAt?: string | null;
+}): Date {
+  return computeVisibleUntil(
+    new Date(job.effectiveJobAt),
+    job.deadlineAt ? new Date(job.deadlineAt) : null,
+  );
+}
+
 export function isVisibleAt(visibleUntil: Date, now: Date): boolean {
   return now.getTime() < visibleUntil.getTime();
 }
@@ -44,7 +54,7 @@ export function resolveEffectiveJobAt(input: {
 
 export function publicationBlockReason(effectiveJobAt: Date, visibleUntil: Date, now: Date): string | null {
   if (!isVisibleAt(visibleUntil, now)) {
-    return "This listing is already outside the 14 day visibility window and cannot be published as a fresh job.";
+    return "This listing is already outside the 7 day visibility window and cannot be published as a fresh job.";
   }
   if (effectiveJobAt.getTime() > now.getTime() + 60_000) {
     return "The effective date is in the future and needs review.";

@@ -1,6 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
-import { JobCard, type JobCardData } from "@/components/JobCard";
+import { FeedDayList } from "@/components/FeedDayList";
+import { type JobCardData } from "@/components/JobCard";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { getCached, setCached } from "@/lib/feed-cache";
@@ -134,17 +135,15 @@ export function FeedPage() {
       </div>
       {loading && <p className="muted">Loading listings…</p>}
       {error && <p className="error">{error}</p>}
-      <div className="feed">
-        {items.map((item, index) =>
-          item.type === "job" ? <JobCard key={`${item.job.id}-${index}`} job={item.job} /> : null,
-        )}
-        {!loading && items.length === 0 && (
-          <div className="panel">
-            <h2>No listings yet</h2>
-            <p className="muted">Published jobs from the last 14 days will appear here.</p>
-          </div>
-        )}
-      </div>
+      {items.length > 0 && (
+        <FeedDayList jobs={items.filter((item) => item.type === "job").map((item) => item.job)} />
+      )}
+      {!loading && items.length === 0 && (
+        <div className="panel">
+          <h2>No listings yet</h2>
+          <p className="muted">Published jobs from the last 7 days will appear here.</p>
+        </div>
+      )}
       {!loading && nextCursor && (
         <div style={{ marginTop: 16 }}>
           <button className="btn-primary" type="button" onClick={loadMore} disabled={loadingMore}>

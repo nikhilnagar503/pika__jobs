@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { JobCard, type JobCardData } from "@/components/JobCard";
+import { FeedDayList } from "@/components/FeedDayList";
+import { type JobCardData } from "@/components/JobCard";
 import { api } from "@/lib/api";
 import { getCached, invalidateCached, setCached } from "@/lib/feed-cache";
 import { restoreScroll, saveScroll } from "@/lib/scroll";
@@ -260,23 +261,20 @@ export function AdminFeedPage() {
       {message && <p className="notice">{message}</p>}
       {error && <p className="error">{error}</p>}
 
-      <div className="feed admin-feed-list">
-        {filtered.map((job) => (
-          <JobCard
-            key={job.id}
-            job={job}
-            mode="admin"
-            onDeleted={onDeleted}
-            onPublished={onPublished}
-          />
-        ))}
-        {!loading && filtered.length === 0 && (
-          <div className="panel">
-            <h2>No listings</h2>
-            <p className="muted">Import JSON or post a job to see cards here.</p>
-          </div>
-        )}
-      </div>
+      {filtered.length > 0 && (
+        <FeedDayList
+          jobs={filtered}
+          mode="admin"
+          onDeleted={onDeleted}
+          onPublished={onPublished}
+        />
+      )}
+      {!loading && filtered.length === 0 && (
+        <div className="panel">
+          <h2>No listings</h2>
+          <p className="muted">Import JSON or post a job to see cards here.</p>
+        </div>
+      )}
     </div>
   );
 }

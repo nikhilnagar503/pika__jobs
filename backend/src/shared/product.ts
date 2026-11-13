@@ -4,7 +4,7 @@ export const product = {
   currency: "INR",
   language: "en",
   minimumAge: 18,
-  visibilityWindowMs: 14 * 24 * 60 * 60 * 1000,
+  visibilityWindowMs: 7 * 24 * 60 * 60 * 1000,
   pageSize: 50,
   adminEmail: "nagarn603@gmail.com",
   rankingVersion: 1,

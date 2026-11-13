@@ -207,7 +207,7 @@ export function AdminImportJobsPage() {
             </div>
           </div>
 
-          <p className="muted">Same company + title cannot appear twice in the live 14-day feed. Edit a ready card or remove it before posting.</p>
+          <p className="muted">Same company + title cannot appear twice in the live 7-day feed. Edit a ready card or remove it before posting.</p>
 
           {drafts.length > 0 && (
             <>

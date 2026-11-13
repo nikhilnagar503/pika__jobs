@@ -28,10 +28,6 @@ export function AdminLayout() {
           <NavLink to="/admin/jobs/new">Post a job</NavLink>
           <NavLink to="/admin/jobs/import">Import JSON</NavLink>
         </div>
-        <div className="admin-nav-group">
-          <p className="admin-nav-label">Help</p>
-          <NavLink to="/admin/manual">Admin manual</NavLink>
-        </div>
         <Link className="admin-exit" to="/feed">Exit to feed</Link>
       </aside>
       <main id="main" className="admin-main">
