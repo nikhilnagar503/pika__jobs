@@ -65,6 +65,13 @@ export class StoreCore {
       if (byExternal) return byExternal;
     }
     const normalized = sourceUrl.trim().replace(/\/$/, "").toLowerCase();
+    const placeholder =
+      !normalized ||
+      normalized === "https://pikajobs.com" ||
+      normalized.startsWith("https://pikajobs.com/import/");
+    if (placeholder) {
+      return undefined;
+    }
     const byUrlLive = live.find(
       (job) => job.sourceId === sourceId && job.sourceUrl.trim().replace(/\/$/, "").toLowerCase() === normalized,
     );

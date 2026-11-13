@@ -212,6 +212,61 @@ button, input, select, textarea { font: inherit; color: inherit; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
+.import-count-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.import-count {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.import-count strong { font-size: 24px; letter-spacing: -0.03em; }
+.import-count span { color: var(--muted); font-size: 13px; font-weight: 600; }
+.import-count.is-ready { background: var(--positive-bg); border-color: #bbf7d0; }
+.import-count.is-blocked { background: var(--warning-bg); border-color: #fde68a; }
+.import-count.is-failed { background: #fef2f2; border-color: #fecaca; }
+.import-section-title {
+  margin: 8px 0 8px;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.import-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 650;
+  background: var(--positive-bg);
+  color: var(--positive);
+}
+.import-report-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.import-report-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.import-report-item strong { font-size: 15px; }
+.import-report-item span { color: var(--muted); font-size: 14px; }
+.import-report-item.is-ready { background: var(--positive-bg); border-color: #bbf7d0; }
+.import-report-item.is-blocked { background: var(--warning-bg); border-color: #fde68a; }
+.import-report-item.is-failed { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.import-report-item.is-failed span { color: #991b1b; }
 
 .alert-card {
   gap: 8px;
@@ -629,6 +684,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .admin-exit { margin-top: 0; border-top: 0; width: 100%; }
   .admin-main { padding: 20px 16px 40px; }
   .admin-stat-grid, .admin-form-grid { grid-template-columns: 1fr; }
+  .import-count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-job-card { flex-direction: column; }
   .admin-header { flex-direction: column; }
 }

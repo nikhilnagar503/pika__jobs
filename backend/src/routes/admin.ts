@@ -60,7 +60,9 @@ adminRouter.post(
         if (seen.has(key)) {
           skipped.push({
             key: draft.importKey,
-            reason: `Duplicate in file: ${draft.companyName} · ${draft.title}`,
+            company: draft.companyName,
+            title: draft.title,
+            reason: `Duplicate in this file: ${draft.companyName} · ${draft.title}`,
           });
           continue;
         }
@@ -68,7 +70,9 @@ adminRouter.post(
         if (existing) {
           skipped.push({
             key: draft.importKey,
-            reason: `Already live: ${existing.companyName} · ${existing.title}`,
+            company: draft.companyName,
+            title: draft.title,
+            reason: `Already live on the feed: ${existing.companyName} · ${existing.title}`,
           });
           continue;
         }
@@ -80,6 +84,7 @@ adminRouter.post(
         format: parsed.format,
         category: parsed.category,
         generatedDate: parsed.generatedDate,
+        totalCount: parsed.totalCount,
         draftCount: drafts.length,
         skippedCount: skipped.length,
         drafts,
@@ -105,7 +110,8 @@ adminRouter.post(
       format: "edited",
       category: null as string | null,
       generatedDate: null as string | null,
-      skipped: [] as Array<{ key: string; reason: string }>,
+      totalCount: 0,
+      skipped: [] as Array<{ key: string; company: string; title: string; reason: string }>,
     };
 
     if (Array.isArray(req.body?.drafts)) {
@@ -113,6 +119,20 @@ adminRouter.post(
       meta.format = typeof req.body.format === "string" ? req.body.format : "edited";
       meta.category = typeof req.body.category === "string" ? req.body.category : null;
       meta.generatedDate = typeof req.body.generatedDate === "string" ? req.body.generatedDate : null;
+      if (Array.isArray(req.body.skipped)) {
+        meta.skipped = req.body.skipped
+          .filter((item: unknown) => item && typeof item === "object")
+          .map((item: { key?: string; company?: string; title?: string; reason?: string }) => ({
+            key: typeof item.key === "string" && item.key ? item.key : crypto.randomUUID(),
+            company: typeof item.company === "string" && item.company ? item.company : "Unknown company",
+            title: typeof item.title === "string" && item.title ? item.title : "Untitled role",
+            reason: typeof item.reason === "string" && item.reason ? item.reason : "Skipped before posting.",
+          }));
+      }
+      meta.totalCount =
+        typeof req.body.totalCount === "number" && req.body.totalCount > 0
+          ? req.body.totalCount
+          : drafts.length + meta.skipped.length;
     } else {
       try {
         const parsed = parseJobImportJson(req.body?.payload ?? req.body);
@@ -121,6 +141,7 @@ adminRouter.post(
           format: parsed.format,
           category: parsed.category,
           generatedDate: parsed.generatedDate,
+          totalCount: parsed.totalCount,
           skipped: parsed.skipped,
         };
       } catch (error) {
@@ -137,8 +158,8 @@ adminRouter.post(
     }
 
     const source = req.store.ensureManualListingSource(actor);
-    const created: Array<{ importKey: string; jobId: string; lifecycle: string }> = [];
-    const failed: Array<{ importKey: string; message: string }> = [];
+    const created: Array<{ importKey: string; jobId: string; lifecycle: string; companyName: string; title: string }> = [];
+    const failed: Array<{ importKey: string; companyName: string; title: string; message: string }> = [];
     const skipped = [...meta.skipped];
     const seen = new Set<string>();
 
@@ -149,16 +170,31 @@ adminRouter.post(
       const key = fingerprint([companyName, title]);
 
       if (!companyName || !title) {
-        skipped.push({ key: importKey, reason: "Missing company or title." });
+        skipped.push({
+          key: importKey,
+          company: companyName || "Unknown company",
+          title: title || "Untitled role",
+          reason: "Missing company or title.",
+        });
         continue;
       }
       if (seen.has(key)) {
-        skipped.push({ key: importKey, reason: `Duplicate in batch: ${companyName} · ${title}` });
+        skipped.push({
+          key: importKey,
+          company: companyName,
+          title,
+          reason: `Duplicate in this batch: ${companyName} · ${title}`,
+        });
         continue;
       }
       const existing = req.store.findLiveCompanyTitleDuplicate(companyName, title);
       if (existing) {
-        skipped.push({ key: importKey, reason: `Already live: ${existing.companyName} · ${existing.title}` });
+        skipped.push({
+          key: importKey,
+          company: companyName,
+          title,
+          reason: `Already live on the feed: ${existing.companyName} · ${existing.title}`,
+        });
         continue;
       }
 
@@ -179,6 +215,8 @@ adminRouter.post(
         if (already) {
           skipped.push({
             key: importKey,
+            company: companyName,
+            title,
             reason: `Already imported: ${already.companyName} · ${already.title}`,
           });
           continue;
@@ -194,16 +232,22 @@ adminRouter.post(
           importKey,
           jobId: published.jobId,
           lifecycle: published.lifecycle,
+          companyName,
+          title,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : "Import failed.";
+        const reason =
+          error instanceof AppError && error.code === "version_required"
+            ? `${companyName} · ${title} collided with another listing identity. Use a unique apply link or email.`
+            : message;
         if (
           error instanceof AppError &&
           (error.code === "duplicate_listing" || error.code === "version_required" || error.code === "archived")
         ) {
-          skipped.push({ key: importKey, reason: message });
+          skipped.push({ key: importKey, company: companyName, title, reason });
         } else {
-          failed.push({ importKey, message });
+          failed.push({ importKey, companyName, title, message: reason });
         }
       }
     }
@@ -212,6 +256,7 @@ adminRouter.post(
       format: meta.format,
       category: meta.category,
       generatedDate: meta.generatedDate,
+      totalCount: meta.totalCount || drafts.length + skipped.length + failed.length,
       publish,
       createdCount: created.length,
       skippedCount: skipped.length,

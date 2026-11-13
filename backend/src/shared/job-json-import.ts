@@ -6,12 +6,28 @@ export type ImportJobDraft = Omit<JobInput, "sourceId"> & {
   skipReason?: string;
 };
 
+export type ImportSkip = {
+  key: string;
+  company: string;
+  title: string;
+  reason: string;
+};
+
+type SkippedDraft = ImportSkip & { skipped: true };
+
+function isSkippedDraft(
+  mapped: ImportJobDraft | SkippedDraft,
+): mapped is SkippedDraft {
+  return "reason" in mapped && mapped.skipped === true;
+}
+
 export type ImportParseResult = {
   format: "pikajobs" | "catalog" | "tracker" | "unknown";
   category: string | null;
   generatedDate: string | null;
+  totalCount: number;
   drafts: ImportJobDraft[];
-  skipped: Array<{ key: string; reason: string }>;
+  skipped: ImportSkip[];
 };
 
 function asString(value: unknown): string {
@@ -251,7 +267,10 @@ function parsePostedAt(...values: string[]): string | null {
   return null;
 }
 
-function draftFromCatalogJob(raw: Record<string, unknown>, index: number): ImportJobDraft | { skipped: true; key: string; reason: string } {
+function draftFromCatalogJob(
+  raw: Record<string, unknown>,
+  index: number,
+): ImportJobDraft | SkippedDraft {
   const title = cleanAlertNoise(
     firstString(raw.title, raw.job_title, raw.role, raw.position, raw.designation),
   );
@@ -261,12 +280,24 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
   const key = firstString(raw.id, raw.external_id, raw.job_id) || `${company}-${title}-${index}`;
 
   if (!title || !company) {
-    return { skipped: true, key, reason: "Missing job title or company." };
+    return {
+      skipped: true,
+      key,
+      company: company || "Unknown company",
+      title: title || "Untitled role",
+      reason: "Missing job title or company.",
+    };
   }
 
   const apply = parseApply(raw, title);
   if (!apply.hasContactRoute) {
-    return { skipped: true, key, reason: "Missing application link, email, phone, or walk-in details." };
+    return {
+      skipped: true,
+      key,
+      company,
+      title,
+      reason: "Missing application link, email, phone, or walk-in details.",
+    };
   }
 
   const opportunityKind = mapOpportunityKind(
@@ -395,7 +426,10 @@ function draftFromCatalogJob(raw: Record<string, unknown>, index: number): Impor
     hrEmail: apply.hrEmail,
     hrEmailApproved: apply.hrEmailApproved,
     emailSubject: apply.emailSubject,
-    sourceUrl: firstString(raw.source_url, apply.sourceUrl) || apply.sourceUrl,
+    sourceUrl:
+      firstString(raw.source_url) ||
+      apply.applicationUrl ||
+      `https://pikajobs.com/import/${encodeURIComponent(key)}`,
     externalJobId: key.slice(0, 120),
     sourcePublishedAt: null,
     deadlineAt,
@@ -441,12 +475,17 @@ export function parseJobImportJson(payload: unknown): ImportParseResult {
         : "unknown";
 
   const drafts: ImportJobDraft[] = [];
-  const skipped: Array<{ key: string; reason: string }> = [];
+  const skipped: ImportSkip[] = [];
 
   rows.forEach((row, index) => {
     const mapped = draftFromCatalogJob(row, index);
-    if ("skipped" in mapped && mapped.skipped) {
-      skipped.push({ key: mapped.key, reason: mapped.reason });
+    if (isSkippedDraft(mapped)) {
+      skipped.push({
+        key: mapped.key,
+        company: mapped.company,
+        title: mapped.title,
+        reason: mapped.reason,
+      });
       return;
     }
     drafts.push(mapped as ImportJobDraft);
@@ -456,6 +495,7 @@ export function parseJobImportJson(payload: unknown): ImportParseResult {
     format,
     category: asString(root.category) || null,
     generatedDate: asString(root.generated_date) || asString(root.date) || null,
+    totalCount: rows.length,
     drafts,
     skipped,
   };

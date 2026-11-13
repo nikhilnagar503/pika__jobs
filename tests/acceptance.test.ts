@@ -6,6 +6,7 @@ import { buildMailto, escapeCsvCell, isBlockedFetchTarget } from "@/domain/safet
 import { AppError } from "@/http";
 import { MemoryStore, type JobInput } from "@/repositories/memory";
 import type { Actor, JobRecord } from "@/domain/types";
+import { parseJobImportJson } from "@/shared/job-json-import";
 
 const now = new Date("2026-11-10T08:00:00.000Z");
 const day = 24 * 60 * 60 * 1000;
@@ -299,6 +300,73 @@ describe("safety", () => {
     expect(isBlockedFetchTarget("https://127.0.0.1/admin")).toBe(true);
     expect(isBlockedFetchTarget("https://careers.example.com/jobs")).toBe(false);
     expect(escapeCsvCell("=cmd()")).toBe("'=cmd()");
+  });
+});
+
+describe("admin json import", () => {
+  it("gives email-only jobs unique source urls and keeps company names on skips", () => {
+    const parsed = parseJobImportJson({
+      generated_date: "2026-11-13",
+      jobs: [
+        {
+          id: "tg-1",
+          title: "Frontend Intern",
+          company: "Es Magico",
+          apply: { email: "careers+nov26@esmagico.com" },
+        },
+        {
+          id: "tg-2",
+          title: "DevOps Intern",
+          company: "Es Magico",
+          apply: { email: "careers+nov26@esmagico.com" },
+        },
+        {
+          id: "tg-3",
+          title: "Mystery Intern",
+          company: "No Contact Co",
+          apply: { url: "", email: "" },
+        },
+      ],
+    });
+    expect(parsed.totalCount).toBe(3);
+    expect(parsed.drafts).toHaveLength(2);
+    expect(parsed.drafts[0]?.sourceUrl).not.toBe(parsed.drafts[1]?.sourceUrl);
+    expect(parsed.drafts[0]?.sourceUrl).toMatch(/\/import\//);
+    expect(parsed.skipped).toEqual([
+      expect.objectContaining({
+        company: "No Contact Co",
+        title: "Mystery Intern",
+        reason: "Missing application link, email, phone, or walk-in details.",
+      }),
+    ]);
+  });
+
+  it("saves two email listings that share the placeholder source url", () => {
+    const db = store();
+    const { actor } = admin(db);
+    const src = source(db, actor);
+    const one = db.saveJob(actor, input(src.id, {
+      title: "Frontend Intern",
+      companyName: "Es Magico",
+      applicationMethod: "email",
+      applicationUrl: null,
+      hrEmail: "careers+nov26@esmagico.com",
+      hrEmailApproved: true,
+      sourceUrl: "https://pikajobs.com",
+      externalJobId: "tg-20261113-004",
+    }), now);
+    const two = db.saveJob(actor, input(src.id, {
+      title: "DevOps Intern",
+      companyName: "Es Magico",
+      applicationMethod: "email",
+      applicationUrl: null,
+      hrEmail: "careers+nov26@esmagico.com",
+      hrEmailApproved: true,
+      sourceUrl: "https://pikajobs.com",
+      externalJobId: "tg-20261113-008",
+    }), now);
+    expect(one.jobId).not.toBe(two.jobId);
+    expect(db.db.drafts).toHaveLength(2);
   });
 });
 
