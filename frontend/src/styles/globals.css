@@ -72,6 +72,30 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn-primary { background: var(--primary); color: white; }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-ghost { border-color: var(--border); background: var(--surface); }
+.google-signin {
+  position: relative;
+  width: 100%;
+  margin: 0 0 4px;
+}
+.google-signin-face {
+  width: 100%;
+  gap: 10px;
+  font-weight: 500;
+}
+.google-signin:has(.google-signin-hit) .google-signin-face {
+  pointer-events: none;
+}
+.google-signin-hit {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0.02;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.google-signin-hit iframe {
+  border: 0;
+}
 .btn-danger {
   border: 1px solid #fecaca;
   background: #fee2e2;
