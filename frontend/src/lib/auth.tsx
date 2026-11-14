@@ -9,6 +9,7 @@ type AuthState = {
   configured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: (next?: string) => Promise<void>;
+  signInWithGoogleIdToken: (token: string, nonce: string) => Promise<void>;
   signUp: (
     email: string,
     password: string,
@@ -59,13 +60,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           provider: "google",
           options: {
             redirectTo: callbackUrl.toString(),
-            queryParams: {
-              access_type: "offline",
-              prompt: "consent",
-            },
           },
         });
         if (error) throw error;
+      },
+      async signInWithGoogleIdToken(token, nonce) {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        const first = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token,
+          nonce,
+        });
+        if (!first.error) return;
+        // GIS/FedCM sometimes omits the nonce; retry so a dashboard Skip nonce check is not required.
+        if (!/nonce/i.test(first.error.message)) throw first.error;
+        const second = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token,
+        });
+        if (second.error) throw second.error;
       },
       async signUp(email, password, displayName) {
         if (!supabase) throw new Error("Supabase is not configured.");

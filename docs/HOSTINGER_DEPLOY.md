@@ -205,6 +205,7 @@ VITE_API_URL=https://api.YOUR_DOMAIN
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 VITE_ADMIN_EMAIL=nagarn603@gmail.com
+VITE_GOOGLE_CLIENT_ID=1234567890-xxxxx.apps.googleusercontent.com
 ```
 
 Redeploy the frontend after saving env vars (Vite bakes `VITE_*` at build time).
