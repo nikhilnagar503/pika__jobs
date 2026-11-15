@@ -1,10 +1,12 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { FeedDayList } from "@/components/FeedDayList";
+import { FeedFilterToggle } from "@/components/FeedFilters";
 import { type JobCardData } from "@/components/JobCard";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { getCached, setCached } from "@/lib/feed-cache";
+import { activeFilterCount, feedQueryKey, readFeedQuery, toFeedApiQuery, toFeedSearchParams } from "@/lib/feed-query";
 import { restoreScroll, saveScroll } from "@/lib/scroll";
 
 type FeedItem = { type: "job"; job: JobCardData };
@@ -20,15 +22,17 @@ type FeedCacheData = {
   nextCursor: string | null;
 };
 
-function cacheKey(q: string) {
-  return `member-feed:${q}`;
+function cacheKey(key: string) {
+  return `member-feed:${key}`;
 }
 
 export function FeedPage() {
   const { user, ready } = useAuth();
   const [params, setParams] = useSearchParams();
-  const q = params.get("q") || "";
-  const initial = getCached<FeedCacheData>(cacheKey(q));
+  const filters = useMemo(() => readFeedQuery(params), [params]);
+  const filterKey = feedQueryKey(filters);
+  const q = filters.q;
+  const initial = getCached<FeedCacheData>(cacheKey(filterKey));
   const [items, setItems] = useState<FeedItem[]>(initial?.items ?? []);
   const [nextCursor, setNextCursor] = useState<string | null>(initial?.nextCursor ?? null);
   const [error, setError] = useState("");
@@ -37,13 +41,11 @@ export function FeedPage() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const persist = useCallback((nextItems: FeedItem[], cursor: string | null) => {
-    setCached(cacheKey(q), { items: nextItems, nextCursor: cursor });
-  }, [q]);
+    setCached(cacheKey(filterKey), { items: nextItems, nextCursor: cursor });
+  }, [filterKey]);
 
   const loadPage = useCallback(async (cursor: string | null, replace: boolean) => {
-    const query = new URLSearchParams();
-    query.set("sort", "latest");
-    if (q) query.set("q", q);
+    const query = toFeedApiQuery(filters);
     if (cursor) query.set("cursor", cursor);
     const body = await api<FeedPageData>(`/api/v1/jobs?${query}`);
     setItems((current) => {
@@ -53,11 +55,11 @@ export function FeedPage() {
     });
     setNextCursor(body.nextCursor);
     return body;
-  }, [persist, q]);
+  }, [filters, persist]);
 
   useEffect(() => {
     if (!user) return;
-    const cached = getCached<FeedCacheData>(cacheKey(q));
+    const cached = getCached<FeedCacheData>(cacheKey(filterKey));
     if (cached) {
       setItems(cached.items);
       setNextCursor(cached.nextCursor);
@@ -78,7 +80,7 @@ export function FeedPage() {
     loadPage(null, true)
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load feed."))
       .finally(() => setLoading(false));
-  }, [user, q, loadPage]);
+  }, [user, filterKey, loadPage]);
 
   useEffect(() => {
     if (loading) return;
@@ -107,10 +109,8 @@ export function FeedPage() {
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const next = new URLSearchParams();
     const value = String(data.get("q") || "").trim();
-    if (value) next.set("q", value);
-    setParams(next);
+    setParams(toFeedSearchParams({ ...filters, q: value }));
   }
 
   const jobCount = items.filter((item) => item.type === "job").length;
@@ -130,6 +130,7 @@ export function FeedPage() {
             aria-label="Search"
           />
           <button className="btn-ghost" type="submit">Search</button>
+          <FeedFilterToggle />
           <Link className="feed-clear" to="/feed">Clear</Link>
         </form>
       </div>
@@ -141,7 +142,11 @@ export function FeedPage() {
       {!loading && items.length === 0 && (
         <div className="panel">
           <h2>No listings yet</h2>
-          <p className="muted">Published jobs from the last 7 days will appear here.</p>
+          <p className="muted">
+            {activeFilterCount(filters)
+              ? "Nothing matches these filters. Reset them to see more listings."
+              : "Published jobs from the last 7 days will appear here."}
+          </p>
         </div>
       )}
       {!loading && nextCursor && (

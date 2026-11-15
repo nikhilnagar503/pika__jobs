@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { FeedFilters } from "@/components/FeedFilters";
 import { useAuth } from "@/lib/auth";
 import { ADMIN_EMAIL } from "@/lib/config";
 
@@ -40,9 +41,11 @@ export function PublicShell() {
 
 export function MemberShell() {
   const { user } = useAuth();
+  const location = useLocation();
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
+  const isFeed = location.pathname === "/feed";
   return (
-    <div className="app">
+    <div className={isFeed ? "app" : "app app-no-rail"}>
       <nav className="side" aria-label="Account">
         <Link className="wordmark" to="/feed">Pikajobs</Link>
         {memberLinks.map(([href, label]) => (
@@ -53,12 +56,13 @@ export function MemberShell() {
       <main id="main" className="feed">
         <Outlet />
       </main>
-      <aside className="rail">
-        <div className="panel">
-          <h2 style={{ fontSize: 16, margin: "0 0 8px" }}>Fresh listings</h2>
-          <p className="muted">Feed shows the newest roles first. Only the last 7 days stay live.</p>
-        </div>
-      </aside>
+      {isFeed && (
+        <aside className="rail" aria-label="Filters">
+          <div className="panel feed-filter-panel">
+            <FeedFilters />
+          </div>
+        </aside>
+      )}
       <nav className="bottom" aria-label="Mobile">
         {memberLinks.map(([href, label]) => (
           <NavLink key={href} to={href}>{label}</NavLink>

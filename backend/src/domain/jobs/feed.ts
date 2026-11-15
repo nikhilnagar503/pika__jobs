@@ -8,6 +8,8 @@ export type FeedFilters = {
   sectors: string[];
   workModes: string[];
   countries: string[];
+  location?: string;
+  duration?: string;
   payCurrency?: string;
   payPeriod?: string;
   payBasis?: string;
@@ -60,6 +62,8 @@ export function matchesFilters(job: JobRecord, filters: FeedFilters, asOf: Date)
     const hit = wanted.some((country) => fields.some((field) => field === country || field.includes(country)));
     if (!hit) return false;
   }
+  if (filters.location && !matchesLocation(job, filters.location)) return false;
+  if (filters.duration && !matchesDuration(job, filters.duration)) return false;
   if (filters.tier && job.accessTier !== filters.tier) return false;
   if (filters.postedWithinDays != null) {
     const age = asOf.getTime() - new Date(job.effectiveJobAt).getTime();
@@ -143,6 +147,51 @@ export function freshnessPoints(effectiveJobAt: string, asOf: Date): number {
 
 function platformTime(job: JobRecord): number {
   return new Date(job.publishedAt ?? job.firstSeenAt ?? job.effectiveJobAt).getTime();
+}
+
+const LOCATION_ALIASES: Record<string, string[]> = {
+  bengaluru: ["bengaluru", "bangalore"],
+  bangalore: ["bengaluru", "bangalore"],
+  delhi: ["delhi", "new delhi", "ncr", "delhi ncr"],
+  gurugram: ["gurugram", "gurgaon"],
+  mumbai: ["mumbai", "bombay"],
+  remote: ["remote", "work from home", "wfh"],
+};
+
+export function locationNeedles(query: string): string[] {
+  const key = query.trim().toLowerCase();
+  return LOCATION_ALIASES[key] ?? (key ? [key] : []);
+}
+
+export function matchesLocation(job: JobRecord, query: string): boolean {
+  const needles = locationNeedles(query);
+  if (!needles.length) return true;
+  const haystack = `${job.locationLabel} ${job.workMode} ${job.eligibleCountries.join(" ")}`.toLowerCase();
+  if (needles.some((needle) => haystack.includes(needle))) return true;
+  if (needles.includes("remote") && job.workMode === "remote") return true;
+  return false;
+}
+
+export function parseDurationMonths(label: string | null | undefined): number | null {
+  if (!label) return null;
+  const text = label.toLowerCase();
+  const months = text.match(/(\d+(?:\.\d+)?)\s*(?:months?|mos?)\b/);
+  if (months) return Number(months[1]);
+  const weeks = text.match(/(\d+)\s*weeks?\b/);
+  if (weeks) return Number(weeks[1]) / 4.345;
+  const years = text.match(/(\d+)\s*years?\b/);
+  if (years) return Number(years[1]) * 12;
+  if (/\bsummer\b/.test(text)) return 3;
+  return null;
+}
+
+export function matchesDuration(job: JobRecord, bucket: string): boolean {
+  const months = parseDurationMonths(job.durationLabel);
+  if (months == null) return true;
+  if (bucket === "1-3") return months >= 1 && months <= 3;
+  if (bucket === "3-6") return months > 3 && months < 6;
+  if (bucket === "6-plus") return months >= 6;
+  return true;
 }
 
 export function compareLatest(a: JobRecord, b: JobRecord): number {

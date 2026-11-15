@@ -196,6 +196,54 @@ describe("pay, filters, and ranking", () => {
     expect(unknownHidden.items.some((item) => item.type === "job" && item.job.title === "Government internship")).toBe(false);
   });
 
+  it("filters by city alias, internship duration, and stipend floor", () => {
+    const db = store();
+    const { actor } = admin(db);
+    const reader = member(db, "filter-reader@example.com").actor;
+    const src = source(db, actor);
+    const shortIntern = db.saveJob(actor, input(src.id, {
+      title: "Short intern",
+      opportunityKind: "internship",
+      locationLabel: "Bangalore",
+      durationLabel: "2 months",
+      compensationType: "stipend",
+      payMinMinor: 800000,
+      payMaxMinor: 800000,
+      payPeriod: "monthly",
+      payBasis: "stipend",
+      sourceUrl: "https://careers.example.com/short-intern",
+      applicationUrl: "https://careers.example.com/short-intern",
+    }), now);
+    db.publishJob(actor, shortIntern.jobId, now);
+    const longIntern = db.saveJob(actor, input(src.id, {
+      title: "Long intern",
+      opportunityKind: "internship",
+      locationLabel: "Pune",
+      durationLabel: "6 months",
+      compensationType: "stipend",
+      payMinMinor: 2000000,
+      payMaxMinor: 2000000,
+      payPeriod: "monthly",
+      payBasis: "stipend",
+      sourceUrl: "https://careers.example.com/long-intern",
+      applicationUrl: "https://careers.example.com/long-intern",
+    }), now);
+    db.publishJob(actor, longIntern.jobId, now);
+
+    const city = db.listFeed(reader, { filters: { location: "Bengaluru" }, sort: "latest", now });
+    expect(city.items.filter((item) => item.type === "job").map((item) => item.type === "job" && item.job.title)).toEqual(["Short intern"]);
+
+    const duration = db.listFeed(reader, { filters: { kinds: ["internship"], duration: "6-plus" }, sort: "latest", now });
+    expect(duration.items.filter((item) => item.type === "job").map((item) => item.type === "job" && item.job.title)).toEqual(["Long intern"]);
+
+    const stipend = db.listFeed(reader, {
+      filters: { kinds: ["internship"], minPayMinor: 1500000, payPeriod: "monthly", includeUnknownPay: false },
+      sort: "latest",
+      now,
+    });
+    expect(stipend.items.filter((item) => item.type === "job").map((item) => item.type === "job" && item.job.title)).toEqual(["Long intern"]);
+  });
+
   it(
     "paginates 10,000 jobs without duplicate ids",
     () => {

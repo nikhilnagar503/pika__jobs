@@ -18,6 +18,16 @@ jobsRouter.get(
     if (typeof sector === "string" && sector) filters.sectors = sector.split(",");
     const q = req.query.q;
     if (typeof q === "string" && q) filters.q = q;
+    const location = req.query.location;
+    if (typeof location === "string" && location.trim()) filters.location = location.trim();
+    const duration = req.query.duration;
+    if (typeof duration === "string" && duration) filters.duration = duration;
+    const payMin = req.query.payMin;
+    if (typeof payMin === "string" && Number.isFinite(Number(payMin))) {
+      filters.minPayMinor = Number(payMin);
+    }
+    const payPeriod = req.query.payPeriod;
+    if (typeof payPeriod === "string" && payPeriod) filters.payPeriod = payPeriod;
     if (req.query.unknown === "0") filters.includeUnknownPay = false;
     const page = req.store.listFeed(req.actor, {
       filters,
