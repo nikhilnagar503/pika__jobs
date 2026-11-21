@@ -5,18 +5,9 @@ import { useAuth } from "@/lib/auth";
 
 function OrDivider() {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        margin: "16px 0",
-        gap: 12,
-      }}
-    >
-      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-      <span style={{ fontSize: 13, color: "var(--muted)" }}>or</span>
-      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-    </div>
+    <p className="or-divider">
+      <span>or</span>
+    </p>
   );
 }
 
@@ -46,22 +37,23 @@ export function SignInPage() {
   }
 
   return (
-    <main className="wrap" style={{ maxWidth: 480, paddingTop: 48 }}>
+    <main className="auth-page">
       <h1>Sign in</h1>
+      <p className="muted auth-lead">Google or email. Then the feed.</p>
       {!configured && <p className="error">Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env</p>}
       {error && <p className="error">{error}</p>}
-      <div className="panel">
+      <div className="panel auth-panel">
         <GoogleSignInButton next={next} label="Continue with Google" onError={setError} />
         <OrDivider />
         <form onSubmit={onSubmit}>
           <label className="field">Email<input name="email" type="email" required /></label>
           <label className="field">Password<input name="password" type="password" required minLength={6} /></label>
-          <button className="btn-primary" type="submit" disabled={loading} style={{ width: "100%" }}>
+          <button className="btn-primary btn-block" type="submit" disabled={loading}>
             {loading ? "Signing in…" : "Sign in with email"}
           </button>
         </form>
       </div>
-      <p className="muted">No account? <Link to="/auth/sign-up">Sign up</Link></p>
+      <p className="muted auth-switch">No account? <Link to="/auth/sign-up">Sign up</Link></p>
     </main>
   );
 }
@@ -97,16 +89,16 @@ export function SignUpPage() {
 
   if (pendingEmail) {
     return (
-      <main className="wrap" style={{ maxWidth: 480, paddingTop: 48 }}>
+      <main className="auth-page">
         <h1>Check your email</h1>
-        <div className="panel">
+        <div className="panel auth-panel">
           <p>
             We sent a confirmation link to <strong>{pendingEmail}</strong>.
           </p>
           <p className="muted">Open that email, confirm your account, then sign in.</p>
-          <p className="muted">If nothing arrives in a minute, check spam — or confirm Resend/Supabase SMTP is verified.</p>
+          <p className="muted">If nothing arrives in a minute, check spam.</p>
         </div>
-        <p className="muted">
+        <p className="muted auth-switch">
           Ready? <Link to="/auth/sign-in">Sign in</Link>
         </p>
       </main>
@@ -114,23 +106,24 @@ export function SignUpPage() {
   }
 
   return (
-    <main className="wrap" style={{ maxWidth: 480, paddingTop: 48 }}>
+    <main className="auth-page">
       <h1>Create account</h1>
+      <p className="muted auth-lead">Free. You must be 18 or older.</p>
       {!configured && <p className="error">Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to frontend/.env</p>}
       {error && <p className="error">{error}</p>}
-      <div className="panel">
+      <div className="panel auth-panel">
         <GoogleSignInButton next="/feed" label="Continue with Google" onError={setError} />
         <OrDivider />
         <form onSubmit={onSubmit}>
           <label className="field">Name<input name="name" required /></label>
           <label className="field">Email<input name="email" type="email" required /></label>
           <label className="field">Password<input name="password" type="password" required minLength={6} /></label>
-          <button className="btn-primary" type="submit" disabled={loading} style={{ width: "100%" }}>
+          <button className="btn-primary btn-block" type="submit" disabled={loading}>
             {loading ? "Creating…" : "Sign up with email"}
           </button>
         </form>
       </div>
-      <p className="muted">Already have an account? <Link to="/auth/sign-in">Sign in</Link></p>
+      <p className="muted auth-switch">Already have an account? <Link to="/auth/sign-in">Sign in</Link></p>
     </main>
   );
 }

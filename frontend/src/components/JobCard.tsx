@@ -40,16 +40,31 @@ function isDraftLifecycle(lifecycle?: string) {
   return lifecycle === "draft" || lifecycle === "in_review";
 }
 
+function rememberScroll() {
+  try {
+    sessionStorage.setItem("pikajobs:scroll:feed", String(window.scrollY));
+    sessionStorage.setItem("pikajobs:scroll:admin-feed", String(window.scrollY));
+  } catch {
+    // ignore
+  }
+}
+
 export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCardProps) {
   const [saved, setSaved] = useState(job.saved);
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [publishError, setPublishError] = useState("");
-  const payKey = job.opportunityKind === "internship" ? "Stipend" : "CTC";
   const postedAt = job.publishedAt || job.firstSeenAt || job.effectiveJobAt;
   const mailto = job.hrEmail
     ? `mailto:${job.hrEmail}${job.emailSubject ? `?subject=${encodeURIComponent(job.emailSubject)}` : ""}`
     : null;
+  const facts = [
+    job.locationLabel,
+    job.payLabel,
+    job.durationLabel,
+    job.batchLabel ? `Batch ${job.batchLabel}` : null,
+  ].filter((item): item is string => Boolean(item));
+  const hasDetails = job.eligibility.length > 0 || job.requirements.length > 0 || job.responsibilities.length > 0;
 
   async function toggleSave() {
     setPending(true);
@@ -89,9 +104,13 @@ export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCar
     <article className="job alert-card">
       <header className="alert-head">
         <div className="alert-head-meta">
-          <p className="alert-kind">{job.opportunityKind.replaceAll("_", " ")}</p>
-          <p className="alert-time">{formatRelativeTime(postedAt)}</p>
-          {job.lifecycle && mode === "admin" && <p className="alert-time">{job.lifecycle}</p>}
+          <p className="alert-meta-row">
+            <span className="alert-kind">{job.opportunityKind.replaceAll("_", " ")}</span>
+            <span className="alert-time">{formatRelativeTime(postedAt)}</span>
+            {job.lifecycle && mode === "admin" && <span className="alert-time">{job.lifecycle}</span>}
+          </p>
+          <h2 className="alert-title">{job.title}</h2>
+          <p className="alert-company">{job.companyName}</p>
         </div>
         <div className="alert-head-actions">
           {job.accessTier === "pro" && <span className="flag">Pro</span>}
@@ -105,13 +124,7 @@ export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCar
               <Link
                 className="btn-ghost save-btn"
                 to={`/admin/jobs/${job.id}/edit`}
-                onClick={() => {
-                  try {
-                    sessionStorage.setItem("pikajobs:scroll:admin-feed", String(window.scrollY));
-                  } catch {
-                    // ignore
-                  }
-                }}
+                onClick={rememberScroll}
               >
                 Edit
               </Link>
@@ -138,71 +151,63 @@ export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCar
         </div>
       </header>
       {publishError && <p className="error">{publishError}</p>}
-      <div className="alert-body">
-        <p><strong>Company:</strong> {job.companyName}</p>
-        <p>
-          <strong>Role:</strong> <span className="alert-role">{job.title}</span>
-        </p>
-        {job.batchLabel && <p><strong>Batch:</strong> {job.batchLabel}</p>}
-        <p><strong>{payKey}:</strong> {job.payLabel}</p>
-        <p><strong>Location:</strong> {job.locationLabel}</p>
-        {job.durationLabel && <p><strong>Duration:</strong> {job.durationLabel}</p>}
-        {job.eligibility.length > 0 && (
-          <section className="alert-section">
-            <p><strong>Eligibility:</strong></p>
-            <ul>{job.eligibility.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        )}
-        {job.requirements.length > 0 && (
-          <section className="alert-section">
-            <p><strong>Requirements:</strong></p>
-            <ul>{job.requirements.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        )}
-        {job.responsibilities.length > 0 && (
-          <section className="alert-section">
-            <p><strong>Responsibilities:</strong></p>
-            <ul>{job.responsibilities.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        )}
-        {(job.applicationUrl || mailto || job.applyNote) && (
-          <section className="alert-apply">
-            {job.applicationUrl && (
-              <p>
-                <strong>Apply Link -</strong>{" "}
-                <a
-                  className="alert-link"
-                  href={job.applicationUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseDown={() => {
-                    try {
-                      sessionStorage.setItem("pikajobs:scroll:feed", String(window.scrollY));
-                      sessionStorage.setItem("pikajobs:scroll:admin-feed", String(window.scrollY));
-                    } catch {
-                      // ignore
-                    }
-                  }}
-                >
-                  {job.applicationUrl}
-                </a>
-              </p>
-            )}
-            {mailto && job.hrEmail && (
-              <>
-                <p>
-                  <strong>Apply -</strong>{" "}
-                  <a className="alert-link" href={mailto} target="_blank" rel="noopener noreferrer">{job.hrEmail}</a>
-                </p>
-                {job.emailSubject && <p><strong>Subject:</strong> {job.emailSubject}</p>}
-              </>
-            )}
-            {job.applyNote && (
-              <p><strong>Apply note -</strong> {job.applyNote}</p>
-            )}
-          </section>
-        )}
-      </div>
+      {facts.length > 0 && (
+        <ul className="alert-facts">
+          {facts.map((fact) => (
+            <li key={fact}>{fact}</li>
+          ))}
+        </ul>
+      )}
+      {hasDetails && (
+        <details className="alert-more" open={mode === "admin"}>
+          <summary>Role details</summary>
+          {job.eligibility.length > 0 && (
+            <section className="alert-section">
+              <p>Eligibility</p>
+              <ul>{job.eligibility.map((item) => <li key={item}>{item}</li>)}</ul>
+            </section>
+          )}
+          {job.requirements.length > 0 && (
+            <section className="alert-section">
+              <p>Requirements</p>
+              <ul>{job.requirements.map((item) => <li key={item}>{item}</li>)}</ul>
+            </section>
+          )}
+          {job.responsibilities.length > 0 && (
+            <section className="alert-section">
+              <p>Responsibilities</p>
+              <ul>{job.responsibilities.map((item) => <li key={item}>{item}</li>)}</ul>
+            </section>
+          )}
+        </details>
+      )}
+      {(job.applicationUrl || mailto || job.applyNote) && (
+        <div className="alert-apply">
+          {job.applicationUrl && (
+            <a
+              className="btn-primary save-btn"
+              href={job.applicationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onMouseDown={rememberScroll}
+            >
+              Apply
+            </a>
+          )}
+          {mailto && job.hrEmail && (
+            <a
+              className={`save-btn ${job.applicationUrl ? "btn-ghost" : "btn-primary"}`}
+              href={mailto}
+              target="_blank"
+              rel="noopener noreferrer"
+              onMouseDown={rememberScroll}
+            >
+              {job.applicationUrl ? "Email HR" : "Apply by email"}
+            </a>
+          )}
+          {job.applyNote && <p className="alert-note">{job.applyNote}</p>}
+        </div>
+      )}
     </article>
   );
 }

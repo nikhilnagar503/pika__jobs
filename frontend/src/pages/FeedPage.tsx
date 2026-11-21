@@ -140,17 +140,23 @@ export function FeedPage() {
         <FeedDayList jobs={items.filter((item) => item.type === "job").map((item) => item.job)} />
       )}
       {!loading && items.length === 0 && (
-        <div className="panel">
-          <h2>No listings yet</h2>
-          <p className="muted">
-            {activeFilterCount(filters)
-              ? "Nothing matches these filters. Reset them to see more listings."
-              : "Published jobs from the last 7 days will appear here."}
-          </p>
+        <div className="panel feed-empty">
+          {activeFilterCount(filters) ? (
+            <>
+              <h2>No matching listings</h2>
+              <p className="muted">Nothing matches these filters. Reset them to see more of the last 7 days.</p>
+              <Link className="btn-ghost" to="/feed">Reset filters</Link>
+            </>
+          ) : (
+            <>
+              <h2>No listings yet</h2>
+              <p className="muted">Published jobs from the last 7 days will appear here.</p>
+            </>
+          )}
         </div>
       )}
       {!loading && nextCursor && (
-        <div style={{ marginTop: 16 }}>
+        <div className="feed-more">
           <button className="btn-primary" type="button" onClick={loadMore} disabled={loadingMore}>
             {loadingMore ? "Loading…" : `Load more (${jobCount} shown)`}
           </button>
