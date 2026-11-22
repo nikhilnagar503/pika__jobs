@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { api } from "@/lib/api";
 import { formatRelativeTime } from "@/lib/time";
 
@@ -49,15 +49,27 @@ function rememberScroll() {
   }
 }
 
+function buildMailto(email: string, subject: string | null) {
+  return `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`;
+}
+
+function buildGmailCompose(email: string, subject: string | null) {
+  const params = new URLSearchParams({ view: "cm", fs: "1", to: email });
+  if (subject) params.set("su", subject);
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}
+
+function isDesktopPointer() {
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCardProps) {
   const [saved, setSaved] = useState(job.saved);
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [publishError, setPublishError] = useState("");
   const postedAt = job.publishedAt || job.firstSeenAt || job.effectiveJobAt;
-  const mailto = job.hrEmail
-    ? `mailto:${job.hrEmail}${job.emailSubject ? `?subject=${encodeURIComponent(job.emailSubject)}` : ""}`
-    : null;
+  const mailto = job.hrEmail ? buildMailto(job.hrEmail, job.emailSubject) : null;
   const facts = [
     job.locationLabel,
     job.payLabel,
@@ -65,6 +77,15 @@ export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCar
     job.batchLabel ? `Batch ${job.batchLabel}` : null,
   ].filter((item): item is string => Boolean(item));
   const hasDetails = job.eligibility.length > 0 || job.requirements.length > 0 || job.responsibilities.length > 0;
+
+  function openHrEmail(event: MouseEvent<HTMLAnchorElement>) {
+    if (!job.hrEmail || !mailto) return;
+    rememberScroll();
+    if (!isDesktopPointer()) return;
+    event.preventDefault();
+    const draft = window.open(buildGmailCompose(job.hrEmail, job.emailSubject), "_blank", "noopener,noreferrer");
+    if (!draft) window.location.href = mailto;
+  }
 
   async function toggleSave() {
     setPending(true);
@@ -198,9 +219,8 @@ export function JobCard({ job, mode = "member", onDeleted, onPublished }: JobCar
             <a
               className={`save-btn ${job.applicationUrl ? "btn-ghost" : "btn-primary"}`}
               href={mailto}
-              target="_blank"
-              rel="noopener noreferrer"
-              onMouseDown={rememberScroll}
+              title={job.hrEmail}
+              onClick={openHrEmail}
             >
               {job.applicationUrl ? "Email HR" : "Apply by email"}
             </a>
